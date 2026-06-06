@@ -35,6 +35,34 @@
 - **不重复实现上述 skill 的能力。**
 - 私有联系人 / 路由 / 凭证不进公开仓库；私有 alias 见 workspace `rules/skills/` overlay。
 
+## Collector CLI（采集阶段，已实现）
+
+采集阶段已独立实现为一个 CLI：把最近一个时间窗内的多源近况收集、过滤、合并成一个纯文本文件，给后续"理解→生成"当输入。
+
+安装：在项目根 `uv pip install -e '.[dev]'`，得到 `eink-diary` 命令。
+
+```bash
+eink-diary collect                        # 前两小时，全部已配置的源，打印到 stdout
+eink-diary collect --minutes 30           # 改时间窗长度
+eink-diary collect --end 2026-06-06T10:00 # 回放历史窗口（便于测试/补刷）
+eink-diary collect --sources wechat       # 只采集指定源
+eink-diary collect --output ctx.txt       # 写文件
+```
+
+**配置驱动的源启用**（public-ready）：config 只是 schema，真实配置全从 `.env` 拿（`.env` 被 .gitignore）。某个源的关键配置出现就启用、不出现就跳过：
+
+- 邮件：`DIARY_RESEND_SKILL_DIR` + `RESEND_API_KEY`（或 1Password 引用）
+- 微信：`DIARY_WECHAT_MSG_DIR`（已解密 PC 版 DB 目录，含 `Multi/MSG*.db`）
+- AI sessions：`DIARY_AI_SESSIONS_REPO`（导出 markdown 目录）
+
+各源取什么：
+
+- **邮件** — 时间窗内收到的邮件（按 `created_at` 过滤；subject + from）。
+- **微信** — 时间窗内**我发出的**文本消息（`IsSender=1 AND Type=1` + CreateTime 窗口，跨所有分片 DB UNION）。
+- **AI sessions** — 我和 AI 的讨论（我的 `## User` turns）。注意：导出 markdown 只有 session 级 date，无逐条时间戳，所以此源取**当天** session 的 user turns 作近似，不能精确到两小时。
+
+输出是分三段的纯文本，缺失/不可用的源给出明确标记，不静默省略。每个源独立降级，单源失败不影响整体。
+
 ## 方法论建议（非硬约束）
 
 - scene prompt 与图解耦：先产出可单独 inspect 的画面描述，再生成图。这样调风格不必重拉数据，生成失败可重放同一 prompt。

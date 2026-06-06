@@ -71,6 +71,57 @@ src/eink_diary/
 
 `scripts/` 放面向人/cron 的入口（如 `run_once.sh`、`run_window.py`）。`src/` 不放面向用户的 shell 入口。
 
+## Collector CLI（采集阶段的具体实现）
+
+采集阶段先独立成一个 CLI：跑一下，它把"最近一个时间窗"内的三类输入收集、过滤、合并成一个**纯文本文件**，作为后续"理解→生成"阶段的输入。这一步不碰图像生成。
+
+### 命令形态
+
+```
+eink-diary collect [--minutes N] [--end ISO8601] [--output PATH]
+                   [--sources resend,wechat,ai_sessions] [--stdout]
+```
+
+- 默认时间窗：`[now - 120min, now]`（前两小时）。`--minutes` 改窗口长度，`--end` 改窗口右端（便于回放历史窗口和测试）。
+- `--sources` 选择启用哪些数据源，默认全开；每个 source 可独立失败而不影响其他。
+- 默认写到一个带时间戳的纯文本文件；`--stdout` 直接打印。
+
+### 三个数据源各自的过滤逻辑
+
+| 源 | 取什么 | 怎么过滤到时间窗 | 底层 |
+|----|--------|------------------|------|
+| 邮件 | 前两小时收到的邮件（subject + from + 摘要） | 按 `created_at` 落在窗口内 | `resend_email_skill` 的 `received list`（凭证走 `op run --env-file=.env`） |
+| 微信 | 前两小时**我发出**的消息（只要"我说的话"） | `IsSender=1 AND Type=1 AND CreateTime ∈ [start,end]` | 直接读 `periodic_jobs/wechat_db_parser/Msg/Multi/MSG*.db` 的 `MSG` 表，跨所有分片库 UNION（消息按库分片不按时间，必须全扫） |
+| AI sessions | 前两小时我和 AI 讨论的东西（我的 user turns 为主） | session 的 date 命中当天后，再按消息时间戳/导出落入窗口 | `contexts/ai_sessions/export_sessions.py --since-date`，解析导出 markdown |
+
+### 输出格式
+
+纯文本，分三段（缺失的源给出明确"无数据"标记，不静默省略），段内带时间戳，便于后续 AI 理解，也便于人核对。示例骨架：
+
+```
+# eink-diary context window
+# window: 2026-06-06T08:00 .. 2026-06-06T10:00 (120 min)
+
+## 邮件（N 封）
+[08:12] from alice@example.com — 主题…（摘要…）
+...
+
+## 微信（我发出的 N 条）
+[08:31] (群:…) 我说的话…
+...
+
+## AI sessions（N 段）
+[09:05] [opencode] 讨论：…（我的 user turn 摘录）
+...
+```
+
+### 关键决策
+
+- **微信数据源直接读 DB，不经子进程 CLI**：`IsSender`/`CreateTime`/`Type` 字段已验证存在，直接 SQL 过滤最干净；但 DB 路径是私有本地路径，必须从配置读、不写死进公开代码。
+- **collector 只产出纯文本，不做理解**：把"杂乱事件 → 画面描述"留给 synthesize 阶段。collector 的产物可单独 inspect。
+- **每个源独立降级**：任一源不可用（DB 不在、凭证缺失、导出失败），该段标注"不可用/无数据"，其余照常。整体绝不因单源失败而崩。
+- **隐私**：collector 处理真实私人内容，其输出文件落本地 gitignored 目录；测试只用 fake fixture，不放真实消息。
+
 ## 公开仓库边界
 
 本仓库设计为只含 fake 示例即可发布：
@@ -83,4 +134,5 @@ src/eink_diary/
 
 - 设备端用树莓派 Python（Pillow 转六色 + Waveshare SDK 刷屏）还是别的渲染路径——留到实现时定。
 - scene prompt 的"风格一致性"如何保证（同一天 8 幅画风格统一）——可能需要在 prompt 里锁定风格描述 + seed 策略。
-- 微信数据源接入后的隐私边界（哪些聊天能进画面理解、哪些必须排除）——接入前需单独确认。
+- 微信数据源已确认技术可行（`MSG` 表 `IsSender`/`CreateTime`/`Type` 验证存在，可按"我发出 + 时间窗"过滤）。剩余的是内容隐私边界：collector 默认取我发出的全部文本消息；将来若要排除某些群/联系人，需单独配置黑名单。
+- image_generation_skill 的引入方式（直接集成代码 vs git submodule/获取）——待与用户讨论后定。
