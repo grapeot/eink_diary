@@ -21,5 +21,12 @@ logs/
 data/
 tmp/
 
+# Experiment artifacts: generated from real personal context, keep local only.
+# Ignore the actual images but keep README so the repo records what was tried.
+experiments/**
+!experiments/
+!experiments/**/
+!experiments/**/README.md
+
 # OS
 .DS_Store
