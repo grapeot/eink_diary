@@ -1,0 +1,45 @@
+# 墨记 eink_diary
+
+一块挂在墙上的彩色电子纸，每两小时把"你最近在干什么"画成一幅画；一天下来，这些画连起来就是一本不用动手写的视觉日记。
+
+## 它是什么
+
+不是仪表盘，是视觉日记。白天 8:00–22:00，每两小时一次，系统读取你这个时间窗的真实近况（最近邮件 / 待办 / AI 编程会话 / 未来的聊天记录），让 AI 把它理解成一段画面描述，再用图像模型生成一幅意象画，刷到 13.3" 彩色电子纸（E-Ink Spectra 6）上。一天 8 幅，攒成当天的视觉编年史。
+
+电子纸的价值在于不发光、被动常驻、纸感、彩色——适合"低频更新、值得反复瞥见"的内容。两小时一画的慢节奏恰好用对了这块介质（全刷十几秒在这个频率下完全无所谓），彩色则让画作成立。
+
+## 当前状态
+
+**文档脚手架阶段，尚未实现代码。** 设计已定稿，见 `docs/`：
+
+- `docs/prd.md` — 产品定义、数据源、成功标准、非目标、物理约束
+- `docs/rfc.md` — 四阶段管线架构（采集 → 理解 → 生成 → 输出）与关键设计决策
+- `docs/test.md` — 测试策略
+- `docs/working.md` — changelog 与 lessons learned
+
+## 架构一览
+
+```
+[数据源 adapters] ─→ 聚合近况 ─→ AI 写画面描述 ─→ 图像生成模型 ─→ 刷 E6 + 归档
+```
+
+编排层定位：采集与生成两端复用已有 skill，本项目只把它们串成一本日记。
+
+## 明确不做的事
+
+- **不做局部刷新。** Spectra 6 彩色电子纸介质级不支持实用局刷（彩色像素需长 waveform 做色粒分离），自标定波形有损屏风险，且两小时一画下全刷耗时无关紧要。
+- 不做密集实时仪表盘、不做照片相框、不做通用天气日历、不做云端服务。
+
+## 作为 skill 安装（给 coding agent）
+
+本仓库的根 skill 在 `skills/eink_diary.md`。把本仓库的 GitHub URL 交给 Codex / Claude Code / Cursor / OpenCode 等 coding agent，让它：
+
+1. 从目标 workspace 的 `AGENTS.md` 或 `CLAUDE.md` 读起，遵循其中的路由文件（如 `WORKSPACE.md`）。
+2. 把 `skills/eink_diary.md` 加入 workspace 的 skill 发现链：若有 `rules/skills/INDEX.md` 或 `skills/INDEX.md` 就更新该索引；否则在 `AGENTS.md`/`CLAUDE.md` 里加一行指针。
+3. 复制 `.env.example` 为 `.env` 并填入真实凭证（`.env` 已被 gitignore）。
+
+本 skill 依赖宿主 workspace 提供的若干能力 skill（邮件、图像生成、AI session 导出、聊天记录）；安装时确认这些已就位或按各自文档安装。
+
+## 隐私
+
+This repository is designed to be publishable with only fake examples. 所有公开文件使用 fake handles / domains / keys。私有联系人、私有路由、真实凭证只存在本地 `.env` 与 workspace 全局 overlay（如 `rules/skills/`），不进本仓库。
