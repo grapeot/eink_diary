@@ -131,6 +131,8 @@ eink-diary collect [--minutes N] [--end ISO8601] [--output PATH]
 | 微信 | 前两小时**我发出**的消息（只要"我说的话"） | `IsSender=1 AND Type=1 AND CreateTime ∈ [start,end]` | 直接读 `periodic_jobs/wechat_db_parser/Msg/Multi/MSG*.db` 的 `MSG` 表，跨所有分片库 UNION（消息按库分片不按时间，必须全扫） |
 | AI sessions | 前两小时我和 AI 讨论的东西（我的 user turns 为主） | session 的 date 命中当天后，再按消息时间戳/导出落入窗口 | `contexts/ai_sessions/export_sessions.py --since-date`，解析导出 markdown |
 
+**时序精度的关键事实（昨日八瞬间实验发现）**：微信消息有逐条真实时间戳，能精确切到两小时窗口；但 AI sessions 导出 markdown 只有 session 级 `date`、**没有逐条时间戳**，所以同一天所有 turns 会落进当天每个窗口、无法区分是几点说的。含义：**做"瞬间"按窗口取料时，微信是精确的窗口时序信号源，AI sessions 只能作"当天背景"**。要让 AI sessions 也精确到窗口，需上游导出器补消息级时间戳（opencode_skill 的 export 已是潜在改进点）。
+
 ### 输出格式
 
 纯文本，分三段（缺失的源给出明确"无数据"标记，不静默省略），段内带时间戳，便于后续 AI 理解，也便于人核对。示例骨架：
