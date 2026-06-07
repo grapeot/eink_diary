@@ -34,10 +34,10 @@ SYSTEM_PROMPT = """\
 3. 富细节（关键）：写进能唤起记忆的具体物件、环境、姿态、表情、光线——具体到这个瞬间，
    而不是任何一天都成立的泛泛场景。让一年后的他看到这些细节能想起"哦，那天是在干这个"。
    基调温暖、亲切、带一点幽默，能让人会心一笑。
-4. 画风：**小羊肖恩 / Aardman 那种定格黏土动画风（Aardman Animations stop-motion
-   claymation, in the style of Shaun the Sheep / Wallace & Gromit）**——手捏黏土质感、
-   可见指纹与手作痕迹、圆润敦实的造型、大而有神的圆眼睛、英式温暖幽默。立体黏土实景，
-   不是彩铅、不是平面插画。把 "Aardman" / "Shaun the Sheep style claymation" 写进 prompt。
+4. 画风：**温暖的彩铅手绘绘本风（soft warm colored-pencil storybook illustration）**
+   ——细腻的彩铅笔触和纹理、柔和的暖色调、温馨亲密、有手绘质感和细节，像一页安静治愈的
+   儿童绘本插画。把 "soft colored-pencil storybook illustration, warm and cozy,
+   gentle hand-drawn pencil texture" 写进 prompt。不要黏土/定格/3D 质感。
 5. 约束写进 prompt：one single scene only (not a summary); vertical 3:4; no text labels。
    （配色/调色板的 E6 适配由程序在末尾统一追加，你专注画面内容和丰富细节即可。）
 6. 物件朝向（重要，常犯的错——用【相对关系】描述，不要用绝对方向）：
@@ -66,11 +66,13 @@ COLLAGE_SYSTEM_PROMPT = """\
 
 任务：
 1. 从全天素材里挑出 3-4 件最有代表性的事。
-2. 画成【一个】温暖的黏土微缩场景，鸭哥同时出现在几个角落各做一件事
-   （像一张定格动画的"今日剧照集锦"）——不是图标罗列，是同一个黏土世界里的几个小场景并置。
+2. 主角是"鸭哥"——【一只拟人的鸭子】（an anthropomorphic duck，不是人类！白色羽毛、
+   黄色喙、圆眼睛）。画成【一个】温暖的彩铅绘本场景，同一只鸭哥同时出现在几个角落各做
+   一件事（像一张温馨的"今日剧照集锦"）——不是图标罗列，是同一个画面里几个小场景自然并置。
+   务必把 "anthropomorphic duck" 明确写进 prompt，所有角落都是这只鸭子，不要画成人。
 3. 每件事配具体可辨认的物件（能唤起记忆），不要泛泛。
-4. 画风：小羊肖恩 / Aardman 定格黏土动画风（Shaun the Sheep / Wallace & Gromit），
-   手捏黏土质感、可见指纹、圆润敦实、大圆眼睛、英式温暖幽默。
+4. 画风：温暖的彩铅手绘绘本风（soft warm colored-pencil storybook illustration），
+   细腻彩铅笔触、柔和暖色、温馨亲密、手绘质感。不要黏土/定格/3D 质感。
 5. 约束：one cohesive scene; vertical 3:4; no text labels。
    （配色/调色板的 E6 适配由程序在末尾统一追加，你专注画面内容和丰富细节即可。）
 6. 物件朝向用相对关系（朝着对应那个鸭哥的脸），别一律摆给观众。
