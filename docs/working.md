@@ -42,6 +42,13 @@
 
 - `push_to_server` 推送前可把整张图物理旋转 180°（屏上下颠倒挂反时用）。新增开关 `EINK_ROTATE_180`，默认 true；取 0/false/no 关闭。旋转只作用于推送字节（Pillow `transpose(ROTATE_180)`、原 format 重存），不改原图文件，归档保持正向。.env.example/README 同步说明，加 pipeline 旋转 test，全部 test 通过。
 
+### 2026-06-06（fallback 端到端验证）
+
+- 用 1416 窗口（仅 1 条转发微信、0 session）实测 fallback 全链路，三项全通：
+  1. trigger：DS-V4 对稀疏素材正确返回 FALLBACK。
+  2. collage：fallback 出图是"今日鸭哥拼贴"——三只鸭哥分身做白天真事（服务器/UPS退货/API key），黏土小羊肖恩风、富细节、对应真实。
+  3. 端到端：自动走 FALLBACK→全天采集→collage→出图→旋转180→推 Pi，屏成功刷新。
+
 ## Lessons Learned
 
 - **Pi 上装依赖用 uv，别用 pip**：pip 在 ARM 上慢且 pillow 可能编译；uv 几秒装完（pillow 有 ARM wheel）。uv 在 `~/.local/bin/uv`，不在默认 PATH。
