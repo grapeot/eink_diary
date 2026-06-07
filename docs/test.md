@@ -1,6 +1,6 @@
 # 墨记 eink_diary — 测试策略
 
-实现尚未开始。本文件定义"什么算验证完成"，供后续实现参照。
+本文件定义"什么算验证完成"。collector / synthesize / display server 均已实现并有 offline test（pytest 全过）。
 
 ## Unit tests（纯逻辑，offline）
 
