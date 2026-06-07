@@ -40,6 +40,17 @@
 
 本 skill 依赖宿主 workspace 提供的若干能力 skill（邮件、图像生成、AI session 导出、聊天记录）；安装时确认这些已就位或按各自文档安装。
 
+## 依赖的公开 skill（方便使用与继续开发）
+
+本项目是编排层，采集与生成端复用以下能力 skill。其中几个已开源，可直接参考或安装：
+
+- **图像生成** — [grapeot/image-generation-skill](https://github.com/grapeot/image-generation-skill)。本项目已把其 CLI 代码内化进 `src/eink_diary/imagegen/`（特化用途，独立演化），上游 repo 是其来源与通用版本。
+- **邮件采集** — [grapeot/resend_email_skill](https://github.com/grapeot/resend_email_skill)。collector 的邮件源通过它的 `received list` 拉取。
+- **AI session 导出** — 由 [grapeot/opencode_skill](https://github.com/grapeot/opencode_skill) 提供导出 CLI，输出 markdown 兼容 collector 的 ai_sessions 源（frontmatter `date`/`source` + `## User`/`## Assistant`）。
+- **微信聊天记录** — 由 `wechat_db_parser` 提供已解密 PC 版 DB 的解析；该项目当前未公开，collector 的微信源直接只读读其 `Multi/MSG*.db`。
+
+各源是配置驱动的：在 `.env` 配置了某源的关键变量才启用它，未配置则自动跳过（见 `.env.example`）。
+
 ## 隐私
 
 This repository is designed to be publishable with only fake examples. 所有公开文件使用 fake handles / domains / keys。私有联系人、私有路由、真实凭证只存在本地 `.env` 与 workspace 全局 overlay（如 `rules/skills/`），不进本仓库。

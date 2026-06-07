@@ -3,13 +3,18 @@ name = "eink-diary"
 version = "0.1.0"
 description = "墨记 — 彩色电子纸视觉日记：把最近近况采集、理解、生成为一幅画刷到 E-Ink"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "google-genai>=1.73.1,<2",
+    "openai>=1.60,<3",
+    "python-dotenv>=1.0,<2",
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
 
 [project.scripts]
 eink-diary = "eink_diary.cli:main"
+eink-diary-image = "eink_diary.imagegen.cli:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]

@@ -62,13 +62,18 @@
 
 13.3" Waveshare E6（Spectra 6）：
 
-- 分辨率约 1200×1600，约 150 PPI——比手机粗，细字会被抖动噪点吃掉，舒适可读最小字号约 16–18px。
+- **屏幕竖放**，纵横比 3:4（宽:高），原生分辨率 1200×1600。所有画作按 3:4 竖版生成。
+- 约 150 PPI——比手机粗，细字会被抖动噪点吃掉，舒适可读最小字号约 16–18px。
 - 六色（黑白红黄蓝绿）是固定墨水点，靠 dithering 模拟中间色，不是连续色域。纯色块和排版好看，照片有明显网点。一切设计走色块和排版，不走照片还原。
 - 全刷一次约 15–20 秒，带黑白翻转闪烁；无局部刷新。
 - 刷新频率必须是时段级（两小时），绝不分钟级。
 
 ## 与既有项目的关系
 
-- 复用 workspace 已有 skill：`resend_email_skill`、`image_generation_skill`、`ai_sessions/export_sessions.py`、（未来）`wechat_messages`。本项目是编排层，不重复实现这些能力。
+- 复用 workspace 已有 skill，本项目是编排层，不重复实现这些能力。其中已开源的：
+  - 图像生成：[grapeot/image-generation-skill](https://github.com/grapeot/image-generation-skill)（CLI 已内化进 `src/eink_diary/imagegen/`）
+  - 邮件：[grapeot/resend_email_skill](https://github.com/grapeot/resend_email_skill)
+  - AI session 导出：[grapeot/opencode_skill](https://github.com/grapeot/opencode_skill)（导出 CLI，输出兼容 collector）
+  - 微信解析：`wechat_db_parser`（当前未公开，collector 直接只读读 DB）
 - 7 寸 token dashboard（`ai_usage_dashboard`）是同类先例但不同形态：那块是数据图表 + 设备端 C++ 渲染；本项目是 AI 作画 + 树莓派出图。架构思路（数据端聚合、低频刷新、失败保留 last-good）可借鉴。
 - 设计讨论的完整脉络见 workspace `contexts/thought_review/ambient_dashboard_e6_design_20260605.md`。

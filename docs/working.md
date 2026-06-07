@@ -23,6 +23,7 @@
 - 微信 DB 必须只读打开（`file:...?mode=ro`），绝不写回 `Msg/`。消息按库分片不按时间，必须扫全部 `MSG*.db`。
 - resend received list 的输出可能是 python-dict 风格文本（单引号 + has_more 尾巴），不是严格 JSON；解析要兼容两种。
 - test fixture 里的群 ID/邮箱必须自己编 fake 值，不要从真实 DB/收件箱粘贴。
+- **`op` 命令静默挂起的坑**：1Password 升级后首次启动 `op` 时，macOS Gatekeeper 会弹 "downloaded from internet 是否打开" 对话框，`op` 进程会一直等这个系统对话框被点掉。表现是所有走 `op run`/`op read` 的命令无限挂起、后台任务超时、甚至出现 "exit 0 但无产出"（拿到空 key 静默退出）的假象。排查时先 `op whoami` 确认 op 能否非交互工作；若卡住，去电脑前点掉那个 Gatekeeper 对话框。不是 service account token 的问题。
 
 - 局部刷新对 13.3" E6（Spectra 6 / ACeP）是介质级死路，不是固件锁：彩色像素需长多阶段 waveform 做色粒分离，无法截短。厂商无局刷 LUT，自标定有损屏风险。E-Ink Ripple/T2000 的"局部更新"需专用控制器+新面板，标准 Waveshare HAT+ 不具备。后续 agent 不要在驱动层尝试局刷。
 - 本项目是编排层，采集与生成两端全部复用 workspace 已有 skill（resend / image_generation / ai_sessions / wechat）。不要重复实现这些能力。
