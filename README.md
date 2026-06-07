@@ -94,7 +94,17 @@ python3 -m venv .venv
 bash scripts/run_display_pi.sh            # 启动，默认 http://0.0.0.0:8080
 ```
 
-`run_display_pi.sh` 会自动设好 `EINK_DISPLAY_SCRIPT`（指向随部署带上的 Waveshare 刷屏脚本）。可用环境变量覆盖：`EINK_PORT`、`EINK_STATE_DIR`、`EINK_PYTHON`。要常驻可用 pm2 / systemd / nohup 包一层。
+`run_display_pi.sh` 会自动设好 `EINK_DISPLAY_SCRIPT`（指向随部署带上的 Waveshare 刷屏脚本）。可用环境变量覆盖：`EINK_PORT`、`EINK_STATE_DIR`、`EINK_PYTHON`。
+
+**常驻建议用 tmux**（实测最可靠；nohup 经 SSH 远程起常被连接关闭带走）：
+
+```bash
+tmux new-session -d -s eink \
+  "cd ~/co/eink_diary_display && EINK_DISPLAY_SCRIPT=\$PWD/RaspberryPi/python/examples/display_image.py \
+   EINK_STATE_DIR=\$PWD/eink_state .venv/bin/python -m uvicorn server.app:app --host 0.0.0.0 --port 8080"
+```
+
+依赖装在 Pi 上用 uv 最快（`~/.local/bin/uv pip install ...`，pillow 有 ARM wheel 不用编译）。要开机自启可写 systemd unit。
 
 驱动库 `RaspberryPi/` 是 Waveshare 官方的，原样复用（来源见 `adhoc_jobs/archived/pi_eink_control_original`，那是 Pi 上原控制端的完整归档）。
 

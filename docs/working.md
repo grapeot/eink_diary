@@ -32,7 +32,17 @@
 - DS-V4 配置摸清：`adhoc_jobs/ds4` always-on 服务，openai-compatible，端口 8001，model `deepseek-v4-flash`，base_url `http://localhost:8001/v1`。
 - 加 4 个 synthesize offline test（mock client），共 52 test 全过。
 
+### 2026-06-06（display server 上 Pi）
+
+- 精简 display server 实现 + 12 test（67 全过）+ 部署脚本 + README。
+- **真硬件端到端跑通**：开发机 POST 鸭哥图 → Pi server 处理成 1200x1600 七色 → Waveshare 驱动刷屏，返回 ok。health/刷屏都验证通过。
+- 原 overkill 控制端归档到 adhoc_jobs/archived/pi_eink_control_original。
+
 ## Lessons Learned
+
+- **Pi 上装依赖用 uv，别用 pip**：pip 在 ARM 上慢且 pillow 可能编译；uv 几秒装完（pillow 有 ARM wheel）。uv 在 `~/.local/bin/uv`，不在默认 PATH。
+- **远程起常驻进程用 tmux，别用 nohup/setsid**：经 SSH 远程 nohup 起的 uvicorn 会被连接关闭带走（表现为"进程没了/log 空/端口不监听"，极易误判为 server 崩溃）。tmux session 才真正存活。诊断时用 `timeout N python -m uvicorn ... > /tmp/x.log 2>&1; cat /tmp/x.log` 能看到真实启动日志。
+- FastAPI 单端点不能同时优雅接 JSON body 和 multipart file：url 也走 form 字段，调用方一律 multipart。
 
 - AI sessions 导出 markdown 只有 session 级 `date`、无逐条时间戳，无法精确过滤到两小时。collector 此源退而取"当天" user turns 作近似。若要精确，需改导出器带消息级时间戳。
 - 微信 DB 必须只读打开（`file:...?mode=ro`），绝不写回 `Msg/`。消息按库分片不按时间，必须扫全部 `MSG*.db`。
