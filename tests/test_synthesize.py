@@ -65,7 +65,8 @@ def test_synthesize_returns_stripped_prompt():
     client = _FakeClient()
     cfg = SynthConfig(base_url=None, api_key="x", model="m")
     out = synthesize("素材：鸭哥发现 op 卡在系统对话框", config=cfg, client=client)
-    assert out == "A duck Yage at a desk, one quiet aha moment"  # 去了首尾空白
+    # 去了首尾空白 + 程序化追加了 E6 配色后缀
+    assert out.startswith("A duck Yage at a desk, one quiet aha moment")
     # 用了配置里的 model，且把素材传进了 user message
     assert client.calls[0]["model"] == "m"
     assert "op 卡" in client.calls[0]["messages"][1]["content"]
@@ -93,3 +94,19 @@ def test_moment_mode_default_system_prompt():
     from eink_diary.synthesize import SYSTEM_PROMPT, build_messages
     msgs = build_messages("素材")
     assert msgs[0]["content"] == SYSTEM_PROMPT
+
+
+def test_eink_suffix_appended_to_prompt():
+    from eink_diary.synthesize import EINK_COLOR_SUFFIX
+    client = _FakeClient(text="A clay duck scene")
+    cfg = SynthConfig(base_url=None, api_key="x", model="m")
+    out = synthesize("素材", config=cfg, client=client)
+    assert out.endswith(EINK_COLOR_SUFFIX)
+    assert out.startswith("A clay duck scene")
+
+
+def test_fallback_signal_not_suffixed():
+    client = _FakeClient(text="FALLBACK")
+    cfg = SynthConfig(base_url=None, api_key="x", model="m")
+    out = synthesize("素材", config=cfg, client=client)
+    assert out == "FALLBACK"   # 信号原样返回，不追加后缀

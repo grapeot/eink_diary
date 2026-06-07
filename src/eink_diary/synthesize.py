@@ -38,9 +38,8 @@ SYSTEM_PROMPT = """\
    claymation, in the style of Shaun the Sheep / Wallace & Gromit）**——手捏黏土质感、
    可见指纹与手作痕迹、圆润敦实的造型、大而有神的圆眼睛、英式温暖幽默。立体黏土实景，
    不是彩铅、不是平面插画。把 "Aardman" / "Shaun the Sheep style claymation" 写进 prompt。
-5. 约束写进 prompt：one single scene only (not a summary); vertical 3:4;
-   6-color e-ink palette (black, warm red, golden yellow, blue, green on off-white);
-   no text labels.
+5. 约束写进 prompt：one single scene only (not a summary); vertical 3:4; no text labels。
+   （配色/调色板的 E6 适配由程序在末尾统一追加，你专注画面内容和丰富细节即可。）
 6. 物件朝向（重要，常犯的错——用【相对关系】描述，不要用绝对方向）：
    鸭哥在工作时，他桌上的东西的正面是【朝着鸭哥的脸】的，跟着鸭哥的朝向走，而不是
    永远摆给观众看。关键是写成相对关系："the screen/notebook/keyboard faces the duck"
@@ -72,8 +71,8 @@ COLLAGE_SYSTEM_PROMPT = """\
 3. 每件事配具体可辨认的物件（能唤起记忆），不要泛泛。
 4. 画风：小羊肖恩 / Aardman 定格黏土动画风（Shaun the Sheep / Wallace & Gromit），
    手捏黏土质感、可见指纹、圆润敦实、大圆眼睛、英式温暖幽默。
-5. 约束：one cohesive scene; vertical 3:4; 6-color e-ink palette
-   (black, warm red, golden yellow, blue, green on off-white); no text labels.
+5. 约束：one cohesive scene; vertical 3:4; no text labels。
+   （配色/调色板的 E6 适配由程序在末尾统一追加，你专注画面内容和丰富细节即可。）
 6. 物件朝向用相对关系（朝着对应那个鸭哥的脸），别一律摆给观众。
 
 只输出最终的英文 image prompt 本身，不要解释、前后缀、markdown。\
@@ -97,6 +96,17 @@ class SynthConfig:
 
 # synthesize 在判定窗口信息不足时返回这个信号，上层据此切到拼贴 fallback。
 FALLBACK_SIGNAL = "FALLBACK"
+
+# E6 电子纸的配色物理约束，程序化追加到每个 image prompt 末尾（确定性，不靠 LLM 记得）。
+# 只约束颜色/对比，不动画面内容与细节——细节由 DS-V4 负责，颜色适配由代码负责。
+EINK_COLOR_SUFFIX = (
+    " IMPORTANT color constraint for a 6-color e-ink screen: render with VIVID, "
+    "SATURATED colors, high contrast, and clean bold areas of solid color. Avoid "
+    "muddy gray mid-tones, beige/brown mush, and subtle gradients (they dither into "
+    "ugly noise on e-ink). Keep ALL the scene's details and objects — only make their "
+    "colors brighter and more clearly separated. Palette: black, warm red, golden "
+    "yellow, blue, green on off-white."
+)
 
 
 def build_messages(context_text: str, mode: str = "moment") -> list[dict]:
@@ -129,7 +139,11 @@ def synthesize(
         model=config.model,
         messages=build_messages(context_text, mode=mode),
     )
-    return resp.choices[0].message.content.strip()
+    prompt = resp.choices[0].message.content.strip()
+    # FALLBACK 信号不是 image prompt，不追加；其余一律程序化追加 E6 配色约束。
+    if is_fallback(prompt):
+        return prompt
+    return prompt + EINK_COLOR_SUFFIX
 
 
 def is_fallback(result: str) -> bool:
