@@ -30,3 +30,6 @@ experiments/**
 
 # OS
 .DS_Store
+
+# eink display server state
+eink_state/

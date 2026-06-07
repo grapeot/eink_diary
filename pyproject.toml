@@ -10,7 +10,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0"]
+dev = ["pytest>=7.0", "pillow>=10", "fastapi>=0.110", "httpx>=0.27", "python-multipart>=0.0.9"]
+# Pi 上部署 display server 装这个组：
+server = ["fastapi>=0.110", "uvicorn>=0.27", "pillow>=10", "python-multipart>=0.0.9"]
 
 [project.scripts]
 eink-diary = "eink_diary.cli:main"

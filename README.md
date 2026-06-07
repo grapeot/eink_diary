@@ -51,6 +51,53 @@
 
 各源是配置驱动的：在 `.env` 配置了某源的关键变量才启用它，未配置则自动跳过（见 `.env.example`）。
 
+## E-Ink Display Server（部署到树莓派）
+
+`server/` 是一个精简的 FastAPI，跑在驱动 13.3" E6 屏的树莓派上。它只做一件事：收一张图 → 处理成 1200×1600 / Spectra-6 七色 → 刷到屏上。端点：
+
+- `GET /health` — 存活
+- `GET /api/state` — 当前显示的图
+- `POST /api/display` — 统一刷屏入口（multipart/form）：带 `file`（图片文件）或 `url`（文本字段）二选一
+
+刷图示例：
+
+```bash
+# 直推本地图片文件（推荐）
+curl -F "file=@out.png" http://<pi-ip>:8080/api/display
+# 或给一个 Pi 能访问的 URL
+curl -F "url=https://example.com/a.png" http://<pi-ip>:8080/api/display
+```
+
+### 部署
+
+部署配置走 `.env`（schema 见 `.env.example`，真实值不进仓库）：
+
+```
+EINK_DEPLOY_HOST=pi-user@<pi-ip>      # passwordless SSH 目标
+EINK_DEPLOY_PATH=~/co/eink_diary_display
+```
+
+从开发机一键传到 Pi（rsync server 代码 + Waveshare 驱动 + Pi 启动脚本）：
+
+```bash
+bash scripts/deploy_display.sh
+```
+
+### 在 Pi 上首次配置与启动
+
+传完后 SSH 到 Pi，在部署目录：
+
+```bash
+cd ~/co/eink_diary_display
+python3 -m venv .venv
+.venv/bin/pip install -e '.[server]'      # ARM 上装 pillow 可能稍慢
+bash scripts/run_display_pi.sh            # 启动，默认 http://0.0.0.0:8080
+```
+
+`run_display_pi.sh` 会自动设好 `EINK_DISPLAY_SCRIPT`（指向随部署带上的 Waveshare 刷屏脚本）。可用环境变量覆盖：`EINK_PORT`、`EINK_STATE_DIR`、`EINK_PYTHON`。要常驻可用 pm2 / systemd / nohup 包一层。
+
+驱动库 `RaspberryPi/` 是 Waveshare 官方的，原样复用（来源见 `adhoc_jobs/archived/pi_eink_control_original`，那是 Pi 上原控制端的完整归档）。
+
 ## 隐私
 
 This repository is designed to be publishable with only fake examples. 所有公开文件使用 fake handles / domains / keys。私有联系人、私有路由、真实凭证只存在本地 `.env` 与 workspace 全局 overlay（如 `rules/skills/`），不进本仓库。
