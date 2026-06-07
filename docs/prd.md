@@ -90,7 +90,7 @@
 - 图像生成：[grapeot/image-generation-skill](https://github.com/grapeot/image-generation-skill)（CLI 已内化进 `src/eink_diary/imagegen/`）
 - 邮件：[grapeot/resend_email_skill](https://github.com/grapeot/resend_email_skill)
 - AI session 导出：[grapeot/opencode_skill](https://github.com/grapeot/opencode_skill)
-- 微信解析：`wechat_db_parser`（未公开，collector 只读读其 DB）
+- 微信解析：[grapeot/wechat_db_parser](https://github.com/grapeot/wechat_db_parser)（collector 只读读其 DB）
 
 7 寸 token dashboard（`ai_usage_dashboard`）是同类先例、不同形态（数据图表 + 设备端 C++）。设计脉络见 workspace `contexts/thought_review/ambient_dashboard_e6_design_20260605.md`。
 
