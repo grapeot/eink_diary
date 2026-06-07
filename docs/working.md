@@ -17,6 +17,13 @@
 - 写 24 个 offline unit test（fake fixture），全过。隐私扫描通过，fixture 无真实数据。
 - 实验图归档：5 张移入 experiments/（gitignored，只留 README）。
 
+### 2026-06-06（续）
+
+- 第一次端到端"昨日八瞬间"日记跑通，方向（瞬间镜头 + 鸭哥）验证成功。
+- 重写 PRD/RFC：正文只讲当前状态 + 核心设计决策，alternatives considered & why 全挪到附录。
+- 确立核心架构决策：分两层、边界在"素材文件"——采集层确定性代码（瘦编排，shell out CLI / 读数据产物，不 import 别人代码），判断层可插拔 AI（默认单次 API call，需动态补料才升级 agent）。
+- 数据源排除业务/对外类（Circle/Stripe/Growth/iMessage/Typefully）；健康量化列为候选第四源。
+
 ## Lessons Learned
 
 - AI sessions 导出 markdown 只有 session 级 `date`、无逐条时间戳，无法精确过滤到两小时。collector 此源退而取"当天" user turns 作近似。若要精确，需改导出器带消息级时间戳。
