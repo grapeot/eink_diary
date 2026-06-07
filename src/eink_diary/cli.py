@@ -12,6 +12,7 @@ from datetime import datetime
 
 from .collector import collect, format_text
 from .config import Config
+from .sources.ai_sessions import export_ai_sessions
 
 
 def _add_collect_parser(sub: argparse._SubParsersAction) -> None:
@@ -57,6 +58,12 @@ def _run_collect(args: argparse.Namespace) -> int:
             "DIARY_RESEND_SKILL_DIR(+RESEND_API_KEY)。",
             file=sys.stderr,
         )
+        return 1
+
+    try:
+        export_ai_sessions(config.ai_sessions_repo)
+    except Exception as exc:  # noqa: BLE001
+        print(f"AI sessions 导出失败: {exc}", file=sys.stderr)
         return 1
 
     start, win_end, results = collect(config, end=end, minutes=args.minutes, only=only)

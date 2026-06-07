@@ -15,7 +15,10 @@ from __future__ import annotations
 import glob
 import os
 import re
+import subprocess
+import sys
 from datetime import datetime
+from pathlib import Path
 
 from .base import ContextSnippet, Source, SourceResult
 
@@ -25,6 +28,52 @@ _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 _TURN_RE = re.compile(
     r"^## (User|Assistant)(?: \[(\d{2}):(\d{2})\])?\s*$", re.MULTILINE
 )
+
+
+def _auto_export_enabled() -> bool:
+    raw = os.environ.get("DIARY_AI_SESSIONS_AUTO_EXPORT", "1")
+    return raw.strip().lower() not in {"0", "false", "no"}
+
+
+def export_ai_sessions(repo_dir: str | None) -> str | None:
+    """Refresh exported AI session markdown before reading it.
+
+    Returns a short status string when an export ran. Missing repo/export script is a
+    no-op so the public package does not assume a private workspace layout.
+    """
+    if not repo_dir or not _auto_export_enabled():
+        return None
+
+    repo = Path(repo_dir)
+    candidates = [
+        repo / "scripts" / "export_sessions.sh",
+        repo / "export_sessions.sh",
+        repo / "export_sessions.py",
+    ]
+    script = next((p for p in candidates if p.exists()), None)
+    if script is None:
+        return None
+
+    timeout = int(os.environ.get("DIARY_AI_SESSIONS_EXPORT_TIMEOUT", "300"))
+    if script.suffix == ".py":
+        cmd = [sys.executable, str(script)]
+    else:
+        cmd = ["bash", str(script)]
+
+    proc = subprocess.run(
+        cmd,
+        cwd=str(repo),
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=False,
+    )
+    if proc.returncode != 0:
+        stderr = (proc.stderr or proc.stdout or "").strip()
+        if len(stderr) > 1000:
+            stderr = stderr[-1000:]
+        raise RuntimeError(f"AI sessions export failed ({proc.returncode}): {stderr}")
+    return f"ai_sessions exported via {script.name}"
 
 
 def _parse_frontmatter(text: str) -> dict[str, str]:

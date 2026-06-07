@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from eink_diary.sources.ai_sessions import AiSessionsSource
+from eink_diary.sources.ai_sessions import AiSessionsSource, export_ai_sessions
 
 FAKE_SESSION = '''---
 source: opencode
@@ -130,3 +130,24 @@ def test_two_windows_get_different_turns(tmp_path):
     w1 = src.collect(datetime(2026, 6, 6, 9, 0), datetime(2026, 6, 6, 10, 0))
     w2 = src.collect(datetime(2026, 6, 6, 11, 0), datetime(2026, 6, 6, 12, 0))
     assert [s.text for s in w1.snippets] != [s.text for s in w2.snippets]
+
+
+def test_export_ai_sessions_runs_repo_export_script(tmp_path):
+    script_dir = tmp_path / "scripts"
+    script_dir.mkdir()
+    marker = tmp_path / "ran.txt"
+    script = script_dir / "export_sessions.sh"
+    script.write_text(f'#!/bin/bash\nprintf ran > "{marker}"\n', encoding="utf-8")
+
+    status = export_ai_sessions(str(tmp_path))
+
+    assert marker.read_text(encoding="utf-8") == "ran"
+    assert status == "ai_sessions exported via export_sessions.sh"
+
+
+def test_export_ai_sessions_can_be_disabled(tmp_path, monkeypatch):
+    script = tmp_path / "export_sessions.py"
+    script.write_text("raise SystemExit(7)\n", encoding="utf-8")
+    monkeypatch.setenv("DIARY_AI_SESSIONS_AUTO_EXPORT", "false")
+
+    assert export_ai_sessions(str(tmp_path)) is None

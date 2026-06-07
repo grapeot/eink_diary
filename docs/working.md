@@ -2,6 +2,11 @@
 
 ## Changelog
 
+### 2026-06-07
+
+- 修复 `eink-diary run` / `collect` 读取 AI sessions 前不刷新导出的问题：若配置了 `DIARY_AI_SESSIONS_REPO`，采集前会自动调用该 repo 内的 `scripts/export_sessions.sh` / `export_sessions.sh` / `export_sessions.py`。
+- 新增 `DIARY_AI_SESSIONS_AUTO_EXPORT=0/false/no` 逃生开关和 `DIARY_AI_SESSIONS_EXPORT_TIMEOUT` 超时配置；默认每次分析前刷新，避免两小时图只读到凌晨 04:00 的旧导出。
+
 ### 2026-06-05
 
 - 初始化项目脚手架：docs（prd/rfc/test/working）、src/scripts/tests/skills 目录、AGENTS.md、.gitignore、.env.example、README、根 skill 文件。
@@ -65,3 +70,4 @@
 - 本项目是编排层，采集与生成两端全部复用 workspace 已有 skill（resend / image_generation / ai_sessions / wechat）。不要重复实现这些能力。
 - scene prompt 是必须可单独 inspect/重放的中间产物，要和图一起归档——调风格、重试、审计都依赖它。
 - 风格选型样本在 workspace `tmp/ambient_eink_art/`（tmp 随时可能清，正式选定后要把风格描述固化进 config，不要依赖 tmp 里的文件长期存在）。
+- 定时视觉日记依赖 AI sessions 时，导出刷新必须属于 e-ink pipeline 自己的前置步骤，而不能只依赖每日 cron；两小时窗口对新鲜度的要求高于每日索引任务。
