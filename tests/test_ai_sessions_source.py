@@ -46,7 +46,8 @@ def _setup_repo(tmp_path, files: dict[str, str]) -> str:
     return str(tmp_path)
 
 
-def test_extracts_my_user_turns_of_target_day(tmp_path):
+def test_no_timestamp_turns_are_discarded(tmp_path):
+    # 无时间戳的 turn（旧格式）一律丢弃，不再"当天背景"兜底（防同质化污染）。
     repo = _setup_repo(
         tmp_path,
         {
@@ -59,16 +60,12 @@ def test_extracts_my_user_turns_of_target_day(tmp_path):
         datetime(2026, 6, 6, 8, 0), datetime(2026, 6, 6, 10, 0)
     )
     assert result.available
-    texts = [s.text for s in result.snippets]
-    assert texts == ["帮我看一下这个项目结构。", "再帮我写个 CLI。"]
-    # 昨天的不该出现
-    assert "昨天" not in " ".join(texts)
-    assert result.snippets[0].label == "opencode"
+    assert result.snippets == []   # 全是无时间戳格式 → 全丢弃
 
 
 def test_truncates_long_turn(tmp_path):
     long_turn = "啊" * 500
-    content = f'---\ndate: "2026-06-06"\nsource: opencode\n---\n\n## User\n\n{long_turn}\n'
+    content = f'---\ndate: "2026-06-06"\nsource: opencode\n---\n\n## User [09:00]\n\n{long_turn}\n'
     repo = _setup_repo(tmp_path, {"opencode/x.md": content})
     src = AiSessionsSource(repo, max_chars_per_turn=50)
     result = src.collect(datetime(2026, 6, 6, 8, 0), datetime(2026, 6, 6, 10, 0))

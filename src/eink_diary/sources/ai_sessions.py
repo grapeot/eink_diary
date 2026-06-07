@@ -88,7 +88,6 @@ class AiSessionsSource(Source):
         if not files:
             return self._unavailable(f"未在 {self.repo_dir} 找到导出的 session markdown")
 
-        end_date = end.date()
         snippets: list[ContextSnippet] = []
         for path in files:
             try:
@@ -105,27 +104,22 @@ class AiSessionsSource(Source):
             source_tag = fm.get("source", "ai")
 
             for hour, minute, body in _iter_user_turns(text):
-                if hour is not None:
-                    # 有精确时间戳：组合 session 日期 + HH:MM，按窗口精确过滤
-                    ts = datetime(
-                        sess_date.year, sess_date.month, sess_date.day, hour, minute
+                # 只接受有精确时间戳的 turn。无时间戳的（旧格式 / 未补时间戳的导出）
+                # 直接丢弃——"瞬间"要求精确时序，拿不到精确时间的内容不能进窗口。
+                # （早期"当天背景"兜底被证明有毒：把一大坨无时间戳内容全灌进每个窗口、
+                #   打上假整点时间戳，制造同质化。见 today_e2e_v2 的 66 条 [12:00] bug。）
+                if hour is None:
+                    continue
+                ts = datetime(
+                    sess_date.year, sess_date.month, sess_date.day, hour, minute
+                )
+                if not (start <= ts <= end):
+                    continue
+                snippets.append(
+                    ContextSnippet(
+                        timestamp=ts, text=self._clip(body), label=source_tag
                     )
-                    if not (start <= ts <= end):
-                        continue
-                    snippets.append(
-                        ContextSnippet(
-                            timestamp=ts, text=self._clip(body), label=source_tag
-                        )
-                    )
-                else:
-                    # 无时间戳（旧格式）：按"当天背景"——仅当窗口右端在该 session 当天
-                    if sess_date != end_date:
-                        continue
-                    snippets.append(
-                        ContextSnippet(
-                            timestamp=end, text=self._clip(body), label=source_tag
-                        )
-                    )
+                )
 
         snippets.sort(key=lambda s: s.timestamp)
         return self._ok(snippets)
