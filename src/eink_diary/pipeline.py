@@ -22,14 +22,15 @@ def _is_moderation_error(exc: Exception) -> bool:
 
 
 def _rotate_180_enabled() -> bool:
-    """是否在推送前把图整体旋转 180°（屏物理挂反时用）。默认开。
+    """是否在推送前把图整体旋转 180°（屏物理挂反时用）。**默认关**（opt-in）。
 
-    EINK_ROTATE_180 取 "0"/"false"/"no"（不分大小写）时关闭，其余视为开。
+    功能保留：仅当 EINK_ROTATE_180 显式取 "1"/"true"/"yes"（不分大小写）时开启。
+    （用户重新摆放了屏，正向安装，故默认不旋转。）
     """
     raw = os.environ.get("EINK_ROTATE_180")
     if raw is None:
-        return True
-    return raw.strip().lower() not in {"0", "false", "no"}
+        return False
+    return raw.strip().lower() in {"1", "true", "yes"}
 
 
 def push_to_server(image_path: str, server_url: str, timeout: int = 120) -> dict:

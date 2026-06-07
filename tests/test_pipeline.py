@@ -128,7 +128,7 @@ def test_push_rotates_180_by_default(monkeypatch, tmp_path):
     img_path = tmp_path / "frame.png"
     _make_split_image(img_path, top, bottom)
 
-    monkeypatch.delenv("EINK_ROTATE_180", raising=False)  # 默认应旋转
+    monkeypatch.setenv("EINK_ROTATE_180", "true")  # 显式开启才旋转（默认关）
     captured = {}
     _capture_urlopen(monkeypatch, captured)
 
@@ -169,7 +169,7 @@ def test_push_no_rotation_when_disabled(monkeypatch, tmp_path):
 
 def test_rotate_180_enabled_parsing(monkeypatch):
     for val, expected in [
-        (None, True),
+        (None, False),  # 默认关（opt-in）
         ("true", True), ("1", True), ("yes", True), ("True", True),
         ("0", False), ("false", False), ("no", False),
         ("FALSE", False), ("No", False), (" 0 ", False),
