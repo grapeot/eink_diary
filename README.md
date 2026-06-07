@@ -10,20 +10,32 @@
 
 ## 当前状态
 
-**文档脚手架阶段，尚未实现代码。** 设计已定稿，见 `docs/`：
+**已实现、端到端跑通。** 一条 `eink-diary run` 即可采集 → 挑瞬间写画面描述 → 出图 → 刷到树莓派驱动的 E-Ink 屏；真实硬件上验证通过。文档见 `docs/`：
 
-- `docs/prd.md` — 产品定义、数据源、成功标准、非目标、物理约束
-- `docs/rfc.md` — 四阶段管线架构（采集 → 理解 → 生成 → 输出）与关键设计决策
+- `docs/prd.md` — 产品定义、产品哲学、数据源、成功标准、非目标、物理约束
+- `docs/rfc.md` — 架构（采集层代码 + 判断层 AI，边界在素材文件）与核心设计决策
 - `docs/test.md` — 测试策略
 - `docs/working.md` — changelog 与 lessons learned
 
 ## 架构一览
 
 ```
-[数据源 adapters] ─→ 聚合近况 ─→ AI 写画面描述 ─→ 图像生成模型 ─→ 刷 E6 + 归档
+[采集层·代码]                         [判断层·AI]              [输出]
+微信/邮件/AI session ─→ collector ─→ 素材文件 ─→ 挑瞬间+写画面描述 ─→ 出图 ─→ 刷 E6
+                       (按时间窗硬过滤)          (DS-V4/GPT)      (gpt-image-2)
 ```
 
-编排层定位：采集与生成两端复用已有 skill，本项目只把它们串成一本日记。
+分两层、边界在"素材文件"：确定性的采集交给代码，需要判断的"挑瞬间/写 prompt"交给 AI。
+没有突出瞬间的时间窗会 fallback 到"今日拼贴"。采集与生成端复用已有 skill。
+
+## 命令
+
+```bash
+eink-diary collect      # 采集某时间窗的素材 → 纯文本
+eink-diary synthesize   # 素材 → 一段画面描述（image prompt）
+eink-diary run          # one-shot：采集→挑瞬间→出图→推送 Pi（供 cron 每两小时一次）
+eink-diary-image        # 内化的图像生成 CLI
+```
 
 ## 明确不做的事
 
