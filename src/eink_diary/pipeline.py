@@ -13,6 +13,7 @@ from datetime import datetime
 
 from .collector import collect, format_text
 from .config import Config
+from .sources.ai_sessions import export_ai_sessions
 from .synthesize import SynthConfig, is_fallback, synthesize
 
 
@@ -91,6 +92,8 @@ def run_once(
     if not config.enabled_sources():
         raise RuntimeError("没有已配置的数据源（见 .env）")
 
+    export_note = export_ai_sessions(config.ai_sessions_repo)
+
     # 1) 采集（这个窗口）
     start, win_end, results = collect(config, end=end, minutes=minutes)
     win_minutes = int((win_end - start).total_seconds() // 60)
@@ -98,7 +101,7 @@ def run_once(
 
     # 2) 挑瞬间写 prompt
     synth_cfg = SynthConfig.from_env()
-    note = ""
+    note = export_note or ""
     prompt = synthesize(context_text, synth_cfg, mode="moment")
 
     # 2b) fallback：窗口信息不足 → 用【今天整体】素材画拼贴（质地镜头）

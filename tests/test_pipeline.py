@@ -20,7 +20,8 @@ def _stub_collect_and_synth(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(pipeline, "format_text", lambda s, e, r, m: "素材文本")
     # config 有源
-    monkeypatch.setattr(pipeline.Config, "from_env", classmethod(lambda cls: type("C", (), {"enabled_sources": lambda self: ["wechat"]})()))
+    monkeypatch.setattr(pipeline.Config, "from_env", classmethod(lambda cls: type("C", (), {"ai_sessions_repo": None, "enabled_sources": lambda self: ["wechat"]})()))
+    monkeypatch.setattr(pipeline, "export_ai_sessions", lambda repo: None)
     monkeypatch.setattr(pipeline.SynthConfig, "from_env", classmethod(lambda cls: None))
     monkeypatch.setenv("EINK_SERVER_URL", "http://pi.test:8080")
 
@@ -197,3 +198,30 @@ def test_fallback_triggers_collage(monkeypatch):
     assert "moment" in calls and "collage" in calls   # 两种模式都调了
     assert "fallback" in result["note"]
     assert result["image_path"] == "/tmp/c.png"
+
+
+def test_exports_ai_sessions_before_collect(monkeypatch):
+    calls = []
+
+    monkeypatch.setattr(
+        pipeline.Config,
+        "from_env",
+        classmethod(lambda cls: type("C", (), {"ai_sessions_repo": "/fake/ai", "enabled_sources": lambda self: ["ai_sessions"]})()),
+    )
+    monkeypatch.setattr(pipeline, "export_ai_sessions", lambda repo: calls.append(("export", repo)) or "exported")
+
+    from datetime import datetime
+
+    def fake_collect(cfg, end=None, minutes=None):
+        calls.append(("collect", cfg.ai_sessions_repo))
+        return datetime(2026, 6, 6, 8, 0), datetime(2026, 6, 6, 10, 0), []
+
+    monkeypatch.setattr(pipeline, "collect", fake_collect)
+    monkeypatch.setattr(pipeline, "synthesize", lambda text, cfg, mode="moment": "p")
+    import eink_diary.imagegen.core as core
+    monkeypatch.setattr(core, "generate", lambda **kw: "/tmp/exported.png")
+
+    result = pipeline.run_once(push=False)
+
+    assert calls[:2] == [("export", "/fake/ai"), ("collect", "/fake/ai")]
+    assert "exported" in result["note"]
