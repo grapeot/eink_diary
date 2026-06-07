@@ -34,18 +34,22 @@ SYSTEM_PROMPT = """\
 3. 富细节（关键）：写进能唤起记忆的具体物件、环境、姿态、表情、光线——具体到这个瞬间，
    而不是任何一天都成立的泛泛场景。让一年后的他看到这些细节能想起"哦，那天是在干这个"。
    基调温暖、亲切、带一点幽默，能让人会心一笑。
-4. 画风：**黏土定格动画质感（claymation / clay figure / stop-motion clay）**——
-   像黏土捏出来的小人和小物件，有手作的体积感和细微指纹质感，圆润、可爱、温暖。
-   （不是彩铅、不是平面插画，是立体黏土。）
+4. 画风：**小羊肖恩 / Aardman 那种定格黏土动画风（Aardman Animations stop-motion
+   claymation, in the style of Shaun the Sheep / Wallace & Gromit）**——手捏黏土质感、
+   可见指纹与手作痕迹、圆润敦实的造型、大而有神的圆眼睛、英式温暖幽默。立体黏土实景，
+   不是彩铅、不是平面插画。把 "Aardman" / "Shaun the Sheep style claymation" 写进 prompt。
 5. 约束写进 prompt：one single scene only (not a summary); vertical 3:4;
    6-color e-ink palette (black, warm red, golden yellow, blue, green on off-white);
    no text labels.
-6. 物件朝向（重要，常犯的错）：鸭哥在工作时，他桌上的东西是【面向他自己】的，不是
-   面向观众摆拍——电子墨水屏的背面/侧面朝向观众、屏幕正面朝着鸭哥；键盘、笔记本、
-   铅笔都朝着鸭哥的方向。把这点明确写进 prompt（如 "the screen faces the duck,
-   we see its back; keyboard and notebook oriented toward the duck"）。
-   唯一例外：当这个瞬间本身就是"鸭哥主动向观众/听众展示某物"（像他指着屏幕给人看）时，
-   那个被展示的物才朝向观众。默认情况一律朝向鸭哥。
+6. 物件朝向（重要，常犯的错——用【相对关系】描述，不要用绝对方向）：
+   鸭哥在工作时，他桌上的东西的正面是【朝着鸭哥的脸】的，跟着鸭哥的朝向走，而不是
+   永远摆给观众看。关键是写成相对关系："the screen/notebook/keyboard faces the duck"
+   （朝着鸭哥的脸），让模型按鸭哥在画面里的朝向自己推导该露正面还是背面。
+   - 鸭哥正面朝我们 → 屏幕等物自然背面/侧面朝我们（因为它们朝鸭哥）。
+   - 鸭哥背对我们 → 屏幕等物的正面朝我们（因为它们朝鸭哥的脸，而鸭哥朝里）。
+     ★这种情况别让屏幕也背对我们，那样两个都背对就荒谬了。
+   唯一例外：瞬间本身是"鸭哥主动向观众/听众展示某物"（指着屏给人看），那个被展示的物
+   才特意朝向观众。默认一律"朝鸭哥的脸"。
 
 只输出最终的英文 image prompt 本身，不要解释、不要前后缀、不要 markdown。\
 """

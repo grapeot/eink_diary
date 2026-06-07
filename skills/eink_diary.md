@@ -82,6 +82,30 @@ LLM 后端 provider 无关，由 `.env` 三个变量驱动（换 provider 只改
 
 三个示例（GPT-5.5 / 远程 DeepSeek / 本地 DS-V4）见 `.env.example`。本地 DS-V4 是 `adhoc_jobs/ds4` 的 always-on 服务（openai-compatible，端口 8001，model `deepseek-v4-flash`）。
 
+## eink-diary run（one-shot，供 crontab）
+
+把整条管线串成一条命令，crontab 每两小时调一次：
+
+```bash
+eink-diary run                          # 默认前两小时，2K medium，出图后推送 Pi
+eink-diary run --end 2026-06-06T20:00   # 回放历史窗口
+eink-diary run --no-push                # 只出图不推送
+```
+
+它做：采集（collect）→ 挑瞬间写 prompt（synthesize，本地 DS-V4）→ 出图（gpt-image-2）
+→ 推送到 Pi display server 刷屏。
+
+- **moderation 自动重试**：出图遇 gpt-image-2 的 moderation_blocked，自动重跑 synthesize
+  换措辞再试（默认最多 2 次）。不做视觉内容审查（保持简单、cron 友好）。
+- **推送目标**从 `.env` 的 `EINK_SERVER_URL` 读（如 `http://<pi-ip>:8080`），multipart POST
+  到 `/api/display`。未配置则跳过推送。
+
+crontab 示例（每两小时，白天）：
+
+```
+0 8,10,12,14,16,18,20,22 * * * cd /path/to/eink_diary && op run --env-file=.env -- .venv/bin/eink-diary run >> run.log 2>&1
+```
+
 ## 方法论建议（非硬约束）
 
 - scene prompt 与图解耦：先产出可单独 inspect 的画面描述，再生成图。这样调风格不必重拉数据，生成失败可重放同一 prompt。

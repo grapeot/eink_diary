@@ -100,11 +100,53 @@ def _run_synthesize(args: argparse.Namespace) -> int:
     return 0
 
 
+def _add_run_parser(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser(
+        "run", help="one-shot：采集→挑瞬间→出图(带 moderation 重试)→推送 Pi（供 cron）"
+    )
+    p.add_argument("--minutes", type=int, default=None, help="时间窗长度，默认配置值")
+    p.add_argument("--end", type=str, default=None, help="时间窗右端 ISO8601，默认 now")
+    p.add_argument("--size", type=str, default="2K", help="图像尺寸，默认 2K")
+    p.add_argument("--quality", type=str, default="medium", help="gpt-image-2 质量，默认 medium")
+    p.add_argument("--output-prefix", type=str, default="eink_diary_out", help="图输出前缀")
+    p.add_argument("--no-push", action="store_true", help="只出图不推送 Pi")
+
+
+def _run_run(args: argparse.Namespace) -> int:
+    from .pipeline import run_once
+
+    end = None
+    if args.end:
+        try:
+            end = datetime.fromisoformat(args.end)
+        except ValueError:
+            print(f"无法解析 --end: {args.end}", file=sys.stderr)
+            return 2
+    try:
+        result = run_once(
+            end=end,
+            minutes=args.minutes,
+            output_prefix=args.output_prefix,
+            image_size=args.size,
+            quality=args.quality,
+            push=not args.no_push,
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"run 失败: {exc}", file=sys.stderr)
+        return 1
+    print(f"窗口: {result['window']} | 素材 {result['context_chars']} 字", file=sys.stderr)
+    print(f"图: {result['image_path']} | 推送: {result['pushed']}", file=sys.stderr)
+    if result["note"]:
+        print(f"note: {result['note']}", file=sys.stderr)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="eink-diary", description="墨记 eink_diary")
     sub = parser.add_subparsers(dest="command", required=True)
     _add_collect_parser(sub)
     _add_synthesize_parser(sub)
+    _add_run_parser(sub)
     return parser
 
 
@@ -115,6 +157,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_collect(args)
     if args.command == "synthesize":
         return _run_synthesize(args)
+    if args.command == "run":
+        return _run_run(args)
     parser.error(f"未知命令: {args.command}")
     return 2
 

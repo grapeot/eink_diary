@@ -1,0 +1,120 @@
+"""end-to-end one-shot：采集 → 挑瞬间写 prompt → 出图（带 moderation 重试）→ 推送 Pi。
+
+供 crontab 每两小时调一次（`eink-diary run`）。设计：尽量自包含、失败可重试、
+不做视觉内容审查（保持简单，crontab 友好）。
+"""
+
+from __future__ import annotations
+
+import os
+import urllib.request
+from datetime import datetime
+
+from .collector import collect, format_text
+from .config import Config
+from .synthesize import SynthConfig, synthesize
+
+
+def _is_moderation_error(exc: Exception) -> bool:
+    s = str(exc).lower()
+    return "moderation" in s or "safety system" in s or "moderation_blocked" in s
+
+
+def push_to_server(image_path: str, server_url: str, timeout: int = 120) -> dict:
+    """把图 multipart POST 到 Pi display server 的 /api/display。
+
+    用标准库拼 multipart，避免新增 requests 依赖。
+    """
+    boundary = "----einkdiaryboundary7e8f"
+    with open(image_path, "rb") as fh:
+        file_data = fh.read()
+    filename = os.path.basename(image_path)
+    body = b"".join([
+        f"--{boundary}\r\n".encode(),
+        f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'.encode(),
+        b"Content-Type: image/png\r\n\r\n",
+        file_data,
+        f"\r\n--{boundary}--\r\n".encode(),
+    ])
+    req = urllib.request.Request(
+        server_url.rstrip("/") + "/api/display",
+        data=body,
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
+        return {"status": resp.status, "body": resp.read().decode("utf-8", "replace")}
+
+
+def run_once(
+    end: datetime | None = None,
+    minutes: int | None = None,
+    output_prefix: str = "eink_diary_out",
+    image_size: str = "2K",
+    quality: str = "medium",
+    max_moderation_retries: int = 2,
+    push: bool = True,
+):
+    """跑一个时间窗的完整管线，返回结果 dict。
+
+    返回 keys: window, context_chars, prompt, image_path, pushed, push_result, note。
+    """
+    from .imagegen.core import generate
+
+    config = Config.from_env()
+    if not config.enabled_sources():
+        raise RuntimeError("没有已配置的数据源（见 .env）")
+
+    # 1) 采集
+    start, win_end, results = collect(config, end=end, minutes=minutes)
+    win_minutes = int((win_end - start).total_seconds() // 60)
+    context_text = format_text(start, win_end, results, win_minutes)
+
+    # 2) 挑瞬间写 prompt
+    prompt = synthesize(context_text, SynthConfig.from_env())
+
+    # 3) 出图，moderation 失败重试（重跑 synthesize 换措辞）
+    image_path = None
+    note = ""
+    last_err = None
+    for attempt in range(max_moderation_retries + 1):
+        try:
+            image_path = generate(
+                prompt=prompt,
+                output_prefix=output_prefix,
+                image_size=image_size,
+                aspect_ratio="3:4",
+                quality=quality,
+            )
+            break
+        except Exception as exc:  # noqa: BLE001
+            last_err = exc
+            if _is_moderation_error(exc) and attempt < max_moderation_retries:
+                # 重新挑瞬间/换措辞再试（LLM 有随机性，换个说法常能过审）
+                note = f"moderation retry #{attempt + 1}"
+                prompt = synthesize(context_text, SynthConfig.from_env())
+                continue
+            raise
+    if image_path is None:
+        raise RuntimeError(f"出图失败: {last_err}")
+
+    # 4) 推送 Pi
+    pushed = False
+    push_result = None
+    if push:
+        server = os.environ.get("EINK_SERVER_URL")
+        if not server:
+            note = (note + "; " if note else "") + "未配置 EINK_SERVER_URL，跳过推送"
+        else:
+            push_result = push_to_server(image_path, server)
+            pushed = True
+
+    return {
+        "window": f"{start:%Y-%m-%dT%H:%M}..{win_end:%H:%M}",
+        "context_chars": len(context_text),
+        "prompt": prompt,
+        "image_path": image_path,
+        "pushed": pushed,
+        "push_result": push_result,
+        "note": note,
+    }
