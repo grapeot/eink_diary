@@ -1,10 +1,13 @@
-"""AI sessions 数据源：取我最近和 AI 讨论的东西（我的 User turns）。
+"""AI sessions 数据源：取我在时间窗内和 AI 讨论的东西（我的 User turns）。
 
-复用 contexts/ai_sessions 的 export_sessions.py 导出 markdown，本源解析它。
+复用 contexts/ai_sessions 导出的 markdown，本源解析它。
 
-粒度限制（重要）：导出 markdown 只带 session 级的 `date`，没有每条消息的精确
-时间戳。所以无法精确过滤到"前两小时"。本源退而取 **end 所在当天** 的 session，
-提取其中我的 `## User` 段，作为"最近讨论"的近似。collector 输出会标明这一点。
+时间戳：导出 markdown 的 turn 标题现在带逐条时间戳 `## User [HH:MM]`（见上游
+export 改动）。本源用 frontmatter 的 `date` + turn 的 `HH:MM` 组合出真实 datetime，
+按 [start, end] 精确过滤——每个窗口拿到的是该窗口真正发生的 turn，不再是当天全量。
+
+向后兼容：旧格式 `## User`（无时间戳）的 turn 没有精确时间，按"当天背景"处理——
+仅当窗口右端落在该 session 当天时纳入，时间戳记为窗口右端。
 """
 
 from __future__ import annotations
@@ -18,6 +21,10 @@ from .base import ContextSnippet, Source, SourceResult
 
 
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
+# 可选时间戳的 turn 标题：## User / ## User [09:15]
+_TURN_RE = re.compile(
+    r"^## (User|Assistant)(?: \[(\d{2}):(\d{2})\])?\s*$", re.MULTILINE
+)
 
 
 def _parse_frontmatter(text: str) -> dict[str, str]:
@@ -32,17 +39,25 @@ def _parse_frontmatter(text: str) -> dict[str, str]:
     return fm
 
 
-def _extract_user_turns(text: str) -> list[str]:
-    """取出所有 '## User' 段的正文（到下一个 '## ' 标题为止）。"""
-    turns: list[str] = []
-    parts = re.split(r"^## (User|Assistant)\s*$", text, flags=re.MULTILINE)
-    # split 后形如 [preamble, 'User', body, 'Assistant', body, ...]
-    for i in range(1, len(parts) - 1, 2):
-        role = parts[i]
-        body = parts[i + 1].strip()
-        if role == "User" and body:
-            turns.append(body)
-    return turns
+def _iter_user_turns(text: str):
+    """产出 (hour, minute or None, body) for each '## User' 段。
+
+    用 finditer 切分：每个标题到下一个标题之间是正文。
+    """
+    matches = list(_TURN_RE.finditer(text))
+    for idx, m in enumerate(matches):
+        role = m.group(1)
+        if role != "User":
+            continue
+        body_start = m.end()
+        body_end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
+        body = text[body_start:body_end].strip()
+        if not body:
+            continue
+        if m.group(2) is not None:
+            yield int(m.group(2)), int(m.group(3)), body
+        else:
+            yield None, None, body
 
 
 class AiSessionsSource(Source):
@@ -60,6 +75,12 @@ class AiSessionsSource(Source):
             files.extend(glob.glob(os.path.join(self.repo_dir, sub, "*.md")))
         return files
 
+    def _clip(self, body: str) -> str:
+        s = body.replace("\n", " ").strip()
+        if len(s) > self.max_chars:
+            s = s[: self.max_chars] + "…"
+        return s
+
     def collect(self, start: datetime, end: datetime) -> SourceResult:
         if not self.repo_dir:
             return self._unavailable("未配置 DIARY_AI_SESSIONS_REPO")
@@ -67,7 +88,7 @@ class AiSessionsSource(Source):
         if not files:
             return self._unavailable(f"未在 {self.repo_dir} 找到导出的 session markdown")
 
-        target_date = end.strftime("%Y-%m-%d")
+        end_date = end.date()
         snippets: list[ContextSnippet] = []
         for path in files:
             try:
@@ -76,15 +97,35 @@ class AiSessionsSource(Source):
             except OSError:
                 continue
             fm = _parse_frontmatter(text)
-            if fm.get("date") != target_date:
+            date_str = fm.get("date", "")
+            try:
+                sess_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
                 continue
             source_tag = fm.get("source", "ai")
-            for turn in _extract_user_turns(text):
-                snippet_text = turn.replace("\n", " ").strip()
-                if len(snippet_text) > self.max_chars:
-                    snippet_text = snippet_text[: self.max_chars] + "…"
-                snippets.append(
-                    # 无精确时间戳，用窗口右端代表"当天"，label 标来源
-                    ContextSnippet(timestamp=end, text=snippet_text, label=source_tag)
-                )
+
+            for hour, minute, body in _iter_user_turns(text):
+                if hour is not None:
+                    # 有精确时间戳：组合 session 日期 + HH:MM，按窗口精确过滤
+                    ts = datetime(
+                        sess_date.year, sess_date.month, sess_date.day, hour, minute
+                    )
+                    if not (start <= ts <= end):
+                        continue
+                    snippets.append(
+                        ContextSnippet(
+                            timestamp=ts, text=self._clip(body), label=source_tag
+                        )
+                    )
+                else:
+                    # 无时间戳（旧格式）：按"当天背景"——仅当窗口右端在该 session 当天
+                    if sess_date != end_date:
+                        continue
+                    snippets.append(
+                        ContextSnippet(
+                            timestamp=end, text=self._clip(body), label=source_tag
+                        )
+                    )
+
+        snippets.sort(key=lambda s: s.timestamp)
         return self._ok(snippets)

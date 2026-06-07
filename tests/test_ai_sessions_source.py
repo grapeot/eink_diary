@@ -79,3 +79,57 @@ def test_truncates_long_turn(tmp_path):
 def test_unavailable_when_no_repo():
     result = AiSessionsSource(None).collect(datetime.now(), datetime.now())
     assert not result.available
+
+
+# ── 带逐条时间戳的精确窗口过滤（核心新行为）──────────────────
+
+TIMESTAMPED = '''---
+source: opencode
+date: "2026-06-06"
+---
+
+## User [09:15]
+
+窗口内的话A
+
+## Assistant [09:16]
+
+回复
+
+## User [11:40]
+
+窗口外的话（11点多）
+
+## User [09:50]
+
+窗口内的话B
+'''
+
+
+def test_timestamp_filters_to_window(tmp_path):
+    repo = _setup_repo(tmp_path, {"opencode/t.md": TIMESTAMPED})
+    src = AiSessionsSource(repo)
+    # 窗口 09:00–10:00：只应拿到 09:15 和 09:50，不要 11:40
+    result = src.collect(datetime(2026, 6, 6, 9, 0), datetime(2026, 6, 6, 10, 0))
+    texts = [s.text for s in result.snippets]
+    assert texts == ["窗口内的话A", "窗口内的话B"]   # 已按时间排序
+    assert all("窗口外" not in t for t in texts)
+    # 时间戳是真实的，不是窗口右端
+    assert result.snippets[0].timestamp == datetime(2026, 6, 6, 9, 15)
+
+
+def test_timestamp_excludes_other_window(tmp_path):
+    repo = _setup_repo(tmp_path, {"opencode/t.md": TIMESTAMPED})
+    src = AiSessionsSource(repo)
+    # 窗口 11:00–12:00：只应拿到 11:40
+    result = src.collect(datetime(2026, 6, 6, 11, 0), datetime(2026, 6, 6, 12, 0))
+    assert [s.text for s in result.snippets] == ["窗口外的话（11点多）"]
+
+
+def test_two_windows_get_different_turns(tmp_path):
+    """回归：修复同质化 bug——不同窗口拿到不同 turn，不再是当天全量。"""
+    repo = _setup_repo(tmp_path, {"opencode/t.md": TIMESTAMPED})
+    src = AiSessionsSource(repo)
+    w1 = src.collect(datetime(2026, 6, 6, 9, 0), datetime(2026, 6, 6, 10, 0))
+    w2 = src.collect(datetime(2026, 6, 6, 11, 0), datetime(2026, 6, 6, 12, 0))
+    assert [s.text for s in w1.snippets] != [s.text for s in w2.snippets]

@@ -29,6 +29,12 @@ SYSTEM_PROMPT = """\
 4. 约束写进 prompt：one single scene only (not a summary); vertical 3:4;
    6-color e-ink palette (black, warm red, golden yellow, blue, green on off-white);
    no text labels.
+5. 物件朝向（重要，常犯的错）：鸭哥在工作时，他桌上的东西是【面向他自己】的，不是
+   面向观众摆拍——电子墨水屏的背面/侧面朝向观众、屏幕正面朝着鸭哥；键盘、笔记本、
+   铅笔都朝着鸭哥的方向。把这点明确写进 prompt（如 "the screen faces the duck,
+   we see its back; keyboard and notebook oriented toward the duck"）。
+   唯一例外：当这个瞬间本身就是"鸭哥主动向观众/听众展示某物"（像他指着屏幕给人看）时，
+   那个被展示的物才朝向观众。默认情况一律朝向鸭哥。
 
 只输出最终的英文 image prompt 本身，不要解释、不要前后缀、不要 markdown。\
 """
