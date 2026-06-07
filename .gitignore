@@ -23,13 +23,13 @@ tmp/
 
 # Experiment artifacts: generated from real personal context, keep local only.
 # Ignore the actual images but keep README so the repo records what was tried.
-experiments/**
-!experiments/
-!experiments/**/
-!experiments/**/README.md
+experiments/
 
 # OS
 .DS_Store
 
 # eink display server state
 eink_state/
+
+# 临时生成图
+eink_diary_out*
