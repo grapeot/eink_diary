@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import io
+
 import pytest
 
 from eink_diary import pipeline
@@ -73,3 +75,107 @@ def test_no_push_when_disabled(monkeypatch):
     result = pipeline.run_once(push=False)
     assert result["pushed"] is False
     assert called["push"] is False
+
+
+def _make_split_image(path, top_color, bottom_color, size=(4, 8)):
+    """构造一张上下两半不同色的图，便于验证 180° 旋转后上下对调。"""
+    from PIL import Image
+
+    w, h = size
+    img = Image.new("RGB", (w, h))
+    px = img.load()
+    for y in range(h):
+        color = top_color if y < h // 2 else bottom_color
+        for x in range(w):
+            px[x, y] = color
+    img.save(path)
+    return img
+
+
+def _extract_posted_file_bytes(body, boundary="----einkdiaryboundary7e8f"):
+    """从 multipart body 里抠出 file part 的原始字节。"""
+    marker = b"image/png\r\n\r\n"
+    start = body.index(marker) + len(marker)
+    end = body.index(f"\r\n--{boundary}--\r\n".encode(), start)
+    return body[start:end]
+
+
+def _capture_urlopen(monkeypatch, captured):
+    class _Resp:
+        status = 200
+
+        def read(self):
+            return b"ok"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=120):
+        captured["body"] = req.data
+        return _Resp()
+
+    monkeypatch.setattr(pipeline.urllib.request, "urlopen", fake_urlopen)
+
+
+def test_push_rotates_180_by_default(monkeypatch, tmp_path):
+    from PIL import Image
+
+    top = (255, 0, 0)      # 红在上
+    bottom = (0, 0, 255)   # 蓝在下
+    img_path = tmp_path / "frame.png"
+    _make_split_image(img_path, top, bottom)
+
+    monkeypatch.delenv("EINK_ROTATE_180", raising=False)  # 默认应旋转
+    captured = {}
+    _capture_urlopen(monkeypatch, captured)
+
+    pipeline.push_to_server(str(img_path), "http://pi.test:8080")
+
+    sent = Image.open(io.BytesIO(_extract_posted_file_bytes(captured["body"]))).convert("RGB")
+    w, h = sent.size
+    # 旋转 180° 后：原本在上的红色应跑到下面，原本在下的蓝色应跑到上面
+    assert sent.getpixel((0, 0)) == bottom
+    assert sent.getpixel((0, h - 1)) == top
+
+    # 原图文件未被改动，仍是正向
+    orig = Image.open(img_path).convert("RGB")
+    assert orig.getpixel((0, 0)) == top
+    assert orig.getpixel((0, orig.size[1] - 1)) == bottom
+
+
+def test_push_no_rotation_when_disabled(monkeypatch, tmp_path):
+    from PIL import Image
+
+    top = (255, 0, 0)
+    bottom = (0, 0, 255)
+    img_path = tmp_path / "frame.png"
+    _make_split_image(img_path, top, bottom)
+
+    monkeypatch.setenv("EINK_ROTATE_180", "false")
+    captured = {}
+    _capture_urlopen(monkeypatch, captured)
+
+    pipeline.push_to_server(str(img_path), "http://pi.test:8080")
+
+    sent = Image.open(io.BytesIO(_extract_posted_file_bytes(captured["body"]))).convert("RGB")
+    h = sent.size[1]
+    # 未旋转：上仍是红，下仍是蓝
+    assert sent.getpixel((0, 0)) == top
+    assert sent.getpixel((0, h - 1)) == bottom
+
+
+def test_rotate_180_enabled_parsing(monkeypatch):
+    for val, expected in [
+        (None, True),
+        ("true", True), ("1", True), ("yes", True), ("True", True),
+        ("0", False), ("false", False), ("no", False),
+        ("FALSE", False), ("No", False), (" 0 ", False),
+    ]:
+        if val is None:
+            monkeypatch.delenv("EINK_ROTATE_180", raising=False)
+        else:
+            monkeypatch.setenv("EINK_ROTATE_180", val)
+        assert pipeline._rotate_180_enabled() is expected, val

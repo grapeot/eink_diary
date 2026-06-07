@@ -38,6 +38,10 @@
 - **真硬件端到端跑通**：开发机 POST 鸭哥图 → Pi server 处理成 1200x1600 七色 → Waveshare 驱动刷屏，返回 ok。health/刷屏都验证通过。
 - 原 overkill 控制端归档到 adhoc_jobs/archived/pi_eink_control_original。
 
+### 2026-06-06（推送旋转）
+
+- `push_to_server` 推送前可把整张图物理旋转 180°（屏上下颠倒挂反时用）。新增开关 `EINK_ROTATE_180`，默认 true；取 0/false/no 关闭。旋转只作用于推送字节（Pillow `transpose(ROTATE_180)`、原 format 重存），不改原图文件，归档保持正向。.env.example/README 同步说明，加 pipeline 旋转 test，全部 test 通过。
+
 ## Lessons Learned
 
 - **Pi 上装依赖用 uv，别用 pip**：pip 在 ARM 上慢且 pillow 可能编译；uv 几秒装完（pillow 有 ARM wheel）。uv 在 `~/.local/bin/uv`，不在默认 PATH。

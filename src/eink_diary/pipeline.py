@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import io
 import os
 import urllib.request
 from datetime import datetime
@@ -20,14 +21,38 @@ def _is_moderation_error(exc: Exception) -> bool:
     return "moderation" in s or "safety system" in s or "moderation_blocked" in s
 
 
+def _rotate_180_enabled() -> bool:
+    """是否在推送前把图整体旋转 180°（屏物理挂反时用）。默认开。
+
+    EINK_ROTATE_180 取 "0"/"false"/"no"（不分大小写）时关闭，其余视为开。
+    """
+    raw = os.environ.get("EINK_ROTATE_180")
+    if raw is None:
+        return True
+    return raw.strip().lower() not in {"0", "false", "no"}
+
+
 def push_to_server(image_path: str, server_url: str, timeout: int = 120) -> dict:
     """把图 multipart POST 到 Pi display server 的 /api/display。
 
     用标准库拼 multipart，避免新增 requests 依赖。
+
+    若 EINK_ROTATE_180 开启（默认），推送前把图整体物理旋转 180°（屏挂反时用）。
+    只旋转传出去的字节，不改原图文件本身（归档保持正向）。
     """
     boundary = "----einkdiaryboundary7e8f"
-    with open(image_path, "rb") as fh:
-        file_data = fh.read()
+    if _rotate_180_enabled():
+        from PIL import Image
+
+        with Image.open(image_path) as img:
+            rotated = img.transpose(Image.ROTATE_180)
+            buf = io.BytesIO()
+            save_format = img.format or "PNG"
+            rotated.save(buf, format=save_format)
+            file_data = buf.getvalue()
+    else:
+        with open(image_path, "rb") as fh:
+            file_data = fh.read()
     filename = os.path.basename(image_path)
     body = b"".join([
         f"--{boundary}\r\n".encode(),
