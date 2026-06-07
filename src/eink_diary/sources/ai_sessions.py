@@ -71,7 +71,7 @@ class AiSessionsSource(Source):
         if not self.repo_dir:
             return []
         files: list[str] = []
-        for sub in ("opencode", "claude_code", "second_mind"):
+        for sub in ("opencode", "claude_code"):
             files.extend(glob.glob(os.path.join(self.repo_dir, sub, "*.md")))
         return files
 

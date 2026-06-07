@@ -39,7 +39,7 @@ date: "2026-06-05"
 
 
 def _setup_repo(tmp_path, files: dict[str, str]) -> str:
-    for sub in ("opencode", "claude_code", "second_mind"):
+    for sub in ("opencode", "claude_code"):
         (tmp_path / sub).mkdir()
     for rel, content in files.items():
         (tmp_path / rel).write_text(content, encoding="utf-8")

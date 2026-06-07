@@ -18,7 +18,7 @@
 
 ## 风格
 
-柔和叙事插画 / 彩铅 storybook 风（参考 `../experiments/duck_moments_20260606/` 和 `three_lenses_20260606/moment_*`）。温暖、亲密、单一场景。
+黏土定格动画质感（claymation / clay figure / stop-motion clay）——黏土捏出的小人小物，有手作体积感，圆润可爱温暖。单一场景、富细节。
 
 ## prompt 写法（enablement，要多样化）
 

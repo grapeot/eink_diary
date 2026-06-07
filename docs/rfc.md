@@ -114,9 +114,8 @@ src/eink_diary/
 
 ## 未决问题
 
-- **同质化的根因已查清并修复（deep dive 结论，更正早前归因）**：早前以为"DS-V4 不会挑瞬间"，实际是数据 bug。那批同质化窗口的素材被一坨标成假整点时间戳的内容淹没——deep dive 发现这些内容**系统性地全来自某个 source**（先是 claude_code，66 条；second_mind 同理），原因是**补时间戳时只补了 opencode、漏了 claude_code/second_mind**。早前"无时间戳→当天背景兜底"逻辑把这些无时间戳内容全灌进每个窗口、打假整点时间戳，于是多窗口被同一坨内容淹没。
+- **同质化的根因已查清并修复（deep dive 结论，更正早前归因）**：早前以为"DS-V4 不会挑瞬间"，实际是数据 bug。那批同质化窗口的素材被一坨标成假整点时间戳的内容淹没——deep dive 发现这些内容**系统性地全来自某个 source**（claude_code，66 条），原因是**补时间戳时只补了 opencode、漏了 claude_code**。早前"无时间戳→当天背景兜底"逻辑把这些无时间戳内容全灌进每个窗口、打假整点时间戳，于是多窗口被同一坨内容淹没。
   - 修复链：(1) ai_sessions adapter 去掉兜底、只接受有时间戳的 turn（commit 0adf37c）；(2) opencode export 补逐条时间戳（PR #6）；(3) claude_code adapter 补逐条时间戳（commit f410a23，jsonl 源每条 event 都有 timestamp）。
-  - **second_mind 的局限**：其源数据只有 conversation 级 created_at、每条 message 无逐条时间戳，无法补——故 second_mind 内容在新逻辑下会被丢弃（数据源局限，非 bug；它是旧 yage chat 导出、非主力）。
   - 验证：今天各窗口素材已按真实时间戳分布（早上 opencode、晚上 claude_code），不再雷同。
 - **仍存的次级问题：当多窗口主题确实相近时，DS-V4 画面仍可能雷同**（缺对同一主题不同侧面/动作的想象）。候选解法：一次性看全天为 8 窗口各挑**互不相同**的瞬间；显式排除"项目元讨论"类元主题；引入健康数据源补"微信沉默"窗口。
 - 挑"瞬间"的自动标准（最有情绪 / 最有代表性 / 最意外 / 轮换）——用 candidate 实验中，未定。
