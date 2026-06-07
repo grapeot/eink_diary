@@ -72,10 +72,39 @@ def _run_collect(args: argparse.Namespace) -> int:
     return 0
 
 
+def _add_synthesize_parser(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("synthesize", help="素材文件 → 一段瞬间画面描述（image prompt）")
+    p.add_argument("--input", type=str, default=None, help="素材文件路径；缺省读 stdin")
+    p.add_argument("--output", type=str, default=None, help="画面描述写入路径")
+
+
+def _run_synthesize(args: argparse.Namespace) -> int:
+    from .synthesize import synthesize
+
+    if args.input:
+        with open(args.input, encoding="utf-8") as fh:
+            context_text = fh.read()
+    else:
+        context_text = sys.stdin.read()
+    if not context_text.strip():
+        print("素材为空", file=sys.stderr)
+        return 1
+
+    prompt = synthesize(context_text)
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as fh:
+            fh.write(prompt + "\n")
+        print(f"已写入 {args.output}", file=sys.stderr)
+    else:
+        sys.stdout.write(prompt + "\n")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="eink-diary", description="墨记 eink_diary")
     sub = parser.add_subparsers(dest="command", required=True)
     _add_collect_parser(sub)
+    _add_synthesize_parser(sub)
     return parser
 
 
@@ -84,6 +113,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "collect":
         return _run_collect(args)
+    if args.command == "synthesize":
+        return _run_synthesize(args)
     parser.error(f"未知命令: {args.command}")
     return 2
 

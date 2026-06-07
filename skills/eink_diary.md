@@ -63,6 +63,25 @@ eink-diary collect --output ctx.txt       # 写文件
 
 输出是分三段的纯文本，缺失/不可用的源给出明确标记，不静默省略。每个源独立降级，单源失败不影响整体。
 
+## Synthesize CLI（判断层，已实现）
+
+把 collector 的素材文件提炼成一段"瞬间"画面描述（image prompt）：不是概括，而是挑一个最有张力的瞬间，写成有鸭哥、有场景、有情绪的单场景画面。
+
+```bash
+eink-diary collect --end 2026-06-06T10:00 --output ctx.txt
+eink-diary synthesize --input ctx.txt --output prompt.txt
+# 或管道：eink-diary collect ... | eink-diary synthesize
+eink-diary-image -p "$(cat prompt.txt)" --aspect-ratio 3:4 --size 1K --quality medium -o out.png
+```
+
+LLM 后端 provider 无关，由 `.env` 三个变量驱动（换 provider 只改这三个）：
+
+- `DIARY_LLM_BASE_URL`（留空=OpenAI 默认；本地 DS-V4 用 `http://localhost:8001/v1`）
+- `DIARY_LLM_MODEL`（如 `gpt-5.5` / `deepseek-v4-flash`）
+- `DIARY_LLM_API_KEY`（本地引擎填 `not-needed`）
+
+三个示例（GPT-5.5 / 远程 DeepSeek / 本地 DS-V4）见 `.env.example`。本地 DS-V4 是 `adhoc_jobs/ds4` 的 always-on 服务（openai-compatible，端口 8001，model `deepseek-v4-flash`）。
+
 ## 方法论建议（非硬约束）
 
 - scene prompt 与图解耦：先产出可单独 inspect 的画面描述，再生成图。这样调风格不必重拉数据，生成失败可重放同一 prompt。

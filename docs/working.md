@@ -24,6 +24,14 @@
 - 确立核心架构决策：分两层、边界在"素材文件"——采集层确定性代码（瘦编排，shell out CLI / 读数据产物，不 import 别人代码），判断层可插拔 AI（默认单次 API call，需动态补料才升级 agent）。
 - 数据源排除业务/对外类（Circle/Stripe/Growth/iMessage/Typefully）；健康量化列为候选第四源。
 
+### 2026-06-06（判断层）
+
+- 实现 synthesize（判断层）：素材文件 → 一段"瞬间"画面描述。OpenAI SDK，base_url/model/api_key 全从 .env 读，provider 无关。
+- 新增 `eink-diary synthesize` 子命令（--input/--output，支持 stdin 管道）。
+- .env.example 给三个 LLM 例子：GPT-5.5 / 远程 DeepSeek V4 Flash / 本地 DS-V4。.env 用本地 DS-V4。
+- DS-V4 配置摸清：`adhoc_jobs/ds4` always-on 服务，openai-compatible，端口 8001，model `deepseek-v4-flash`，base_url `http://localhost:8001/v1`。
+- 加 4 个 synthesize offline test（mock client），共 52 test 全过。
+
 ## Lessons Learned
 
 - AI sessions 导出 markdown 只有 session 级 `date`、无逐条时间戳，无法精确过滤到两小时。collector 此源退而取"当天" user turns 作近似。若要精确，需改导出器带消息级时间戳。
