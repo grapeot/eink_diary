@@ -13,7 +13,7 @@ from datetime import datetime
 
 from .collector import collect, format_text
 from .config import Config
-from .synthesize import SynthConfig, synthesize
+from .synthesize import SynthConfig, is_fallback, synthesize
 
 
 def _is_moderation_error(exc: Exception) -> bool:
@@ -90,17 +90,28 @@ def run_once(
     if not config.enabled_sources():
         raise RuntimeError("没有已配置的数据源（见 .env）")
 
-    # 1) 采集
+    # 1) 采集（这个窗口）
     start, win_end, results = collect(config, end=end, minutes=minutes)
     win_minutes = int((win_end - start).total_seconds() // 60)
     context_text = format_text(start, win_end, results, win_minutes)
 
     # 2) 挑瞬间写 prompt
-    prompt = synthesize(context_text, SynthConfig.from_env())
+    synth_cfg = SynthConfig.from_env()
+    note = ""
+    prompt = synthesize(context_text, synth_cfg, mode="moment")
+
+    # 2b) fallback：窗口信息不足 → 用【今天整体】素材画拼贴（质地镜头）
+    if is_fallback(prompt):
+        note = "fallback: collage(全天)"
+        # 采集今天从早(默认从 win_end 当天 08:00)到现在的全部素材
+        day_start = win_end.replace(hour=8, minute=0, second=0, microsecond=0)
+        day_minutes = max(int((win_end - day_start).total_seconds() // 60), win_minutes)
+        d_start, d_end, d_results = collect(config, end=win_end, minutes=day_minutes)
+        day_context = format_text(d_start, d_end, d_results, day_minutes)
+        prompt = synthesize(day_context, synth_cfg, mode="collage")
 
     # 3) 出图，moderation 失败重试（重跑 synthesize 换措辞）
     image_path = None
-    note = ""
     last_err = None
     for attempt in range(max_moderation_retries + 1):
         try:
@@ -115,9 +126,9 @@ def run_once(
         except Exception as exc:  # noqa: BLE001
             last_err = exc
             if _is_moderation_error(exc) and attempt < max_moderation_retries:
-                # 重新挑瞬间/换措辞再试（LLM 有随机性，换个说法常能过审）
-                note = f"moderation retry #{attempt + 1}"
-                prompt = synthesize(context_text, SynthConfig.from_env())
+                # 重新换措辞再试（LLM 有随机性，换个说法常能过审）
+                note = (note + "; " if note else "") + f"moderation retry #{attempt + 1}"
+                prompt = synthesize(context_text, synth_cfg, mode="moment")
                 continue
             raise
     if image_path is None:

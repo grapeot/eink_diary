@@ -28,7 +28,7 @@ def _stub_collect_and_synth(monkeypatch, tmp_path):
 def test_moderation_retry_then_success(monkeypatch):
     synth_calls = {"n": 0}
 
-    def fake_synth(text, cfg):
+    def fake_synth(text, cfg, mode="moment"):
         synth_calls["n"] += 1
         return f"prompt v{synth_calls['n']}"
 
@@ -55,7 +55,7 @@ def test_moderation_retry_then_success(monkeypatch):
 
 
 def test_non_moderation_error_not_retried(monkeypatch):
-    monkeypatch.setattr(pipeline, "synthesize", lambda text, cfg: "p")
+    monkeypatch.setattr(pipeline, "synthesize", lambda text, cfg, mode="moment": "p")
     import eink_diary.imagegen.core as core
 
     def boom(**kw):
@@ -67,7 +67,7 @@ def test_non_moderation_error_not_retried(monkeypatch):
 
 
 def test_no_push_when_disabled(monkeypatch):
-    monkeypatch.setattr(pipeline, "synthesize", lambda text, cfg: "p")
+    monkeypatch.setattr(pipeline, "synthesize", lambda text, cfg, mode="moment": "p")
     import eink_diary.imagegen.core as core
     monkeypatch.setattr(core, "generate", lambda **kw: "/tmp/x.png")
     called = {"push": False}

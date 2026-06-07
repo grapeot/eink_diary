@@ -69,3 +69,27 @@ def test_synthesize_returns_stripped_prompt():
     # 用了配置里的 model，且把素材传进了 user message
     assert client.calls[0]["model"] == "m"
     assert "op 卡" in client.calls[0]["messages"][1]["content"]
+
+
+# ── fallback 检测 ──────────────────────────────────────────
+
+from eink_diary.synthesize import COLLAGE_SYSTEM_PROMPT, is_fallback
+
+
+def test_is_fallback_detects_signal():
+    assert is_fallback("FALLBACK")
+    assert is_fallback("  fallback  ")
+    assert is_fallback("FALLBACK\n")
+    assert not is_fallback("A clay duck at a desk...")
+
+
+def test_collage_mode_uses_collage_system_prompt():
+    from eink_diary.synthesize import build_messages
+    msgs = build_messages("今日全天素材", mode="collage")
+    assert msgs[0]["content"] == COLLAGE_SYSTEM_PROMPT
+
+
+def test_moment_mode_default_system_prompt():
+    from eink_diary.synthesize import SYSTEM_PROMPT, build_messages
+    msgs = build_messages("素材")
+    assert msgs[0]["content"] == SYSTEM_PROMPT

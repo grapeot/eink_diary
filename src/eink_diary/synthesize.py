@@ -51,7 +51,32 @@ SYSTEM_PROMPT = """\
    唯一例外：瞬间本身是"鸭哥主动向观众/听众展示某物"（指着屏给人看），那个被展示的物
    才特意朝向观众。默认一律"朝鸭哥的脸"。
 
-只输出最终的英文 image prompt 本身，不要解释、不要前后缀、不要 markdown。\
+先做一个判断：这个时间窗的素材，够不够撑起【一个】有张力、具体、值得入画的瞬间？
+- 够 → 直接只输出最终的英文 image prompt 本身（不要解释、前后缀、markdown）。
+- 不够（素材太少、太杂、太平淡，挑不出一个值得画的具体瞬间）→ 只输出一行：FALLBACK
+  （什么都不要加。上层会改用"今日整体拼贴"模式重画。）\
+"""
+
+# 拼贴模式（fallback）：当某个窗口没有值得画的单一瞬间时，用【今天整体】的素材，
+# 画一张"今天到此为止是什么样的一天"——质地镜头的具象表达，仍是鸭哥的世界。
+COLLAGE_SYSTEM_PROMPT = """\
+你在为一块彩色电子纸"视觉日记"屏生成一幅画的英文 image prompt。
+
+输入是用户（鸭哥）【今天从早到现在】的素材（微信里他说的话、和 AI 的讨论、邮件）。
+当下这两小时没有突出的单一瞬间，所以这一幅不画单一瞬间，而是画【今天整体的样子】。
+
+任务：
+1. 从全天素材里挑出 3-4 件最有代表性的事。
+2. 画成【一个】温暖的黏土微缩场景，鸭哥同时出现在几个角落各做一件事
+   （像一张定格动画的"今日剧照集锦"）——不是图标罗列，是同一个黏土世界里的几个小场景并置。
+3. 每件事配具体可辨认的物件（能唤起记忆），不要泛泛。
+4. 画风：小羊肖恩 / Aardman 定格黏土动画风（Shaun the Sheep / Wallace & Gromit），
+   手捏黏土质感、可见指纹、圆润敦实、大圆眼睛、英式温暖幽默。
+5. 约束：one cohesive scene; vertical 3:4; 6-color e-ink palette
+   (black, warm red, golden yellow, blue, green on off-white); no text labels.
+6. 物件朝向用相对关系（朝着对应那个鸭哥的脸），别一律摆给观众。
+
+只输出最终的英文 image prompt 本身，不要解释、前后缀、markdown。\
 """
 
 
@@ -70,16 +95,28 @@ class SynthConfig:
         )
 
 
-def build_messages(context_text: str) -> list[dict]:
+# synthesize 在判定窗口信息不足时返回这个信号，上层据此切到拼贴 fallback。
+FALLBACK_SIGNAL = "FALLBACK"
+
+
+def build_messages(context_text: str, mode: str = "moment") -> list[dict]:
+    system = COLLAGE_SYSTEM_PROMPT if mode == "collage" else SYSTEM_PROMPT
     return [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system},
         {"role": "user", "content": context_text},
     ]
 
 
-def synthesize(context_text: str, config: SynthConfig | None = None, client=None) -> str:
+def synthesize(
+    context_text: str,
+    config: SynthConfig | None = None,
+    client=None,
+    mode: str = "moment",
+) -> str:
     """素材文本 → 一段画面描述（image prompt）。
 
+    mode="moment"（默认）：挑一个瞬间；素材不足时返回 FALLBACK_SIGNAL。
+    mode="collage"：今日整体拼贴（fallback 用，喂全天素材）。
     client 可注入（测试用 mock）；不注入则按 config 用 openai SDK 建一个。
     """
     config = config or SynthConfig.from_env()
@@ -90,6 +127,11 @@ def synthesize(context_text: str, config: SynthConfig | None = None, client=None
 
     resp = client.chat.completions.create(
         model=config.model,
-        messages=build_messages(context_text),
+        messages=build_messages(context_text, mode=mode),
     )
     return resp.choices[0].message.content.strip()
+
+
+def is_fallback(result: str) -> bool:
+    """synthesize(moment) 是否判定信息不足（返回 FALLBACK 信号）。"""
+    return result.strip().upper().startswith(FALLBACK_SIGNAL)
