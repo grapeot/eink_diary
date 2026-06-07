@@ -179,3 +179,21 @@ def test_rotate_180_enabled_parsing(monkeypatch):
         else:
             monkeypatch.setenv("EINK_ROTATE_180", val)
         assert pipeline._rotate_180_enabled() is expected, val
+
+
+def test_fallback_triggers_collage(monkeypatch):
+    """moment 返回 FALLBACK → 改用 collage 模式重新 synthesize 全天素材。"""
+    calls = []
+
+    def fake_synth(text, cfg, mode="moment"):
+        calls.append(mode)
+        return "FALLBACK" if mode == "moment" else "A collage of duck's day"
+
+    monkeypatch.setattr(pipeline, "synthesize", fake_synth)
+    import eink_diary.imagegen.core as core
+    monkeypatch.setattr(core, "generate", lambda **kw: "/tmp/c.png")
+
+    result = pipeline.run_once(push=False)
+    assert "moment" in calls and "collage" in calls   # 两种模式都调了
+    assert "fallback" in result["note"]
+    assert result["image_path"] == "/tmp/c.png"
