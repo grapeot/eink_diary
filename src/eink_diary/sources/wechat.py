@@ -5,7 +5,7 @@
 
 字段（已验证）：MSG 表含 IsSender(1=我发出)、Type(1=文本)、CreateTime(unix epoch)、
 StrContent、StrTalker。collector 用"我发的话"作为触发点，但输出同一会话前后各两条文本，
-避免把回应从上下文里剥离出来。
+并在正文里标明 speaker + 会话，避免模型把对方的话误归因给用户。
 """
 
 from __future__ import annotations
@@ -129,10 +129,11 @@ class WechatSource(Source):
                 if not content:
                     continue
                 speaker = "我" if row.is_sender == 1 else "对方"
+                conversation = row.talker or "unknown"
                 snippets.append(
                     ContextSnippet(
                         timestamp=datetime.fromtimestamp(row.create_time),
-                        text=f"{speaker}: {content}",
+                        text=f"{speaker}（会话: {conversation}）: {content}",
                         label=row.talker,
                     )
                 )
