@@ -25,7 +25,7 @@ collector 自身很瘦：它**不重新实现、也不 import 任何数据源 sk
 
 | 源 | 耦合方式 | adapter 知道的是 | 配置项 |
 |----|---------|-----------------|--------|
-| 微信 | **读数据产物**：只读读已解密 DB（`Multi/MSG*.db`），自写 SQL（`IsSender=1 AND Type=1` + CreateTime 窗口，跨分片 UNION） | DB 目录路径 | `DIARY_WECHAT_MSG_DIR` |
+| 微信 | **读数据产物**：只读读已解密 DB（`Multi/MSG*.db`），自写 SQL。以窗口内 `IsSender=1 AND Type=1` 作为触发点，带同一 `StrTalker` 前后各两条文本上下文并去重，跨分片 UNION | DB 目录路径 | `DIARY_WECHAT_MSG_DIR` |
 | AI sessions | **读数据产物**：glob + 解析导出 markdown（frontmatter `date`/`source` + `## User`） | 导出目录路径 | `DIARY_AI_SESSIONS_REPO` |
 | 邮件 | **shell out 调 CLI**：`op run -- python -m resend_email_skill received list`（需 OAuth/op，重新 code 不值得） | skill 项目目录 | `DIARY_RESEND_SKILL_DIR` + 凭证 |
 | 健康（候选） | 待定（读 SQLite 产物 或 调其 CLI） | 待定 | 待定 |

@@ -32,7 +32,7 @@ def _setup_msg_dir(tmp_path, rows) -> str:
     return str(tmp_path)
 
 
-def test_only_my_text_messages_in_window(tmp_path):
+def test_my_text_messages_with_local_context_in_window(tmp_path):
     base = int(datetime(2026, 6, 6, 9, 0).timestamp())
     rows = [
         (base + 60, "我说的话A", "alice", 1, 1),        # 我发的文本，窗口内 ✓
@@ -49,8 +49,12 @@ def test_only_my_text_messages_in_window(tmp_path):
 
     assert result.available
     texts = [s.text for s in result.snippets]
-    assert texts == ["我说的话A", "我说的话B"]
-    assert result.snippets[1].label == "grp@chatroom"
+    assert texts == [
+        "我（会话: alice）: 我说的话A",
+        "对方（会话: alice）: 别人说的",
+        "我（会话: grp@chatroom）: 我说的话B",
+    ]
+    assert result.snippets[2].label == "grp@chatroom"
 
 
 def test_multiple_shards_unioned(tmp_path):
@@ -61,7 +65,30 @@ def test_multiple_shards_unioned(tmp_path):
     _make_fake_db(str(multi / "MSG1.db"), [(base + 20, "分片1", "a", 1, 1)])
     src = WechatSource(str(tmp_path))
     result = src.collect(datetime(2026, 6, 6, 9, 0), datetime(2026, 6, 6, 9, 30))
-    assert sorted(s.text for s in result.snippets) == ["分片0", "分片1"]
+    assert sorted(s.text for s in result.snippets) == ["我（会话: a）: 分片0", "我（会话: a）: 分片1"]
+
+
+def test_overlapping_wechat_context_is_deduplicated(tmp_path):
+    base = int(datetime(2026, 6, 6, 9, 0).timestamp())
+    rows = [
+        (base + 10, "对方0", "alice", 0, 1),
+        (base + 20, "我1", "alice", 1, 1),
+        (base + 30, "对方1", "alice", 0, 1),
+        (base + 40, "我2", "alice", 1, 1),
+        (base + 50, "对方2", "alice", 0, 1),
+    ]
+    msg_dir = _setup_msg_dir(tmp_path, rows)
+    src = WechatSource(msg_dir, context_radius=2)
+
+    result = src.collect(datetime(2026, 6, 6, 9, 0), datetime(2026, 6, 6, 9, 1))
+
+    assert [s.text for s in result.snippets] == [
+        "对方（会话: alice）: 对方0",
+        "我（会话: alice）: 我1",
+        "对方（会话: alice）: 对方1",
+        "我（会话: alice）: 我2",
+        "对方（会话: alice）: 对方2",
+    ]
 
 
 def test_unavailable_when_no_dir():
