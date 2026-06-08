@@ -26,6 +26,7 @@
 ## 手工验证看什么 artifact
 
 - 一次完整 run 后，当天日期目录下应有：一张图 + 对应的 scene prompt（中间产物）。
+- 配置 `DIARY_ARCHIVE_DIR` 后，一次完整 run 应写入 `YYYY-MM-DD/HHMM/image.*`、`prompt.txt`、`context_private.md`、`manifest.json`。即使 Pi 推送失败，只要图像生成成功，归档也应存在。
 - scene prompt 内容应能合理对应那个时间窗的真实近况（可人工核对"AI 把我这两小时理解对了吗"）。
 - 图应为竖版 3:4、色块清晰、适配 E6 六色（无需照片级还原）。
 - 设备在场时：图正确刷上屏，无白屏、无残留报错画面。

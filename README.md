@@ -14,6 +14,7 @@
 
 - `docs/prd.md` — 产品定义、产品哲学、数据源、成功标准、非目标、物理约束
 - `docs/rfc.md` — 架构（采集层代码 + 判断层 AI，边界在素材文件）与核心设计决策
+- `docs/preview.md` — 本地视觉日记 preview 的产品形态与 UI 设计
 - `docs/test.md` — 测试策略
 - `docs/working.md` — changelog 与 lessons learned
 
@@ -27,6 +28,8 @@
 
 分两层、边界在"素材文件"：确定性的采集交给代码，需要判断的"挑瞬间/写 prompt"交给 AI。
 没有突出瞬间的时间窗会 fallback 到"今日拼贴"。采集与生成端复用已有 skill。
+
+`DIARY_ARCHIVE_DIR` 配置后，每次成功出图都会写入稳定本地归档：`YYYY-MM-DD/HHMM/image.*`、`prompt.txt`、`context_private.md`、`manifest.json`。这里的 `HHMM` 是刷新时刻，即时间窗右端；归档发生在推送 Pi 之前，所以生成成功但设备离线时也能保住图和 prompt。
 
 ## 命令
 

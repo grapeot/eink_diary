@@ -124,9 +124,9 @@ crontab 示例（每两小时，白天）：
 
 ## 输出规格
 
-- 图：竖版 3:4，适配 1200×1600，存当天日期目录。
-- scene prompt：与图同目录的文本文件。
-- 归档根目录由 `DIARY_ARCHIVE_DIR` 配置（本地，不进仓库）。
+- 图：竖版 3:4，适配 1200×1600。
+- 归档根目录由 `DIARY_ARCHIVE_DIR` 配置（本地，不进仓库）。配置后，每次成功出图都会写入 `DIARY_ARCHIVE_DIR/YYYY-MM-DD/HHMM/`，其中 `HHMM` 是刷新时刻（时间窗右端）。
+- 每个归档槽包含 `image.*`、`prompt.txt`、`context_private.md`、`manifest.json`。`context_private.md` 是私有审计材料，后续公开站不得直接读取。
 
 ## 已知陷阱
 
