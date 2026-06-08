@@ -59,7 +59,7 @@ eink-diary collect --output ctx.txt       # 写文件
 
 - **邮件** — 时间窗内收到的邮件（按 `created_at` 过滤；subject + from）。
 - **微信** — 时间窗内**我发出的**文本消息（`IsSender=1 AND Type=1` + CreateTime 窗口，跨所有分片 DB UNION）。
-- **AI sessions** — 我和 AI 的讨论（我的 `## User` turns）。注意：导出 markdown 只有 session 级 date，无逐条时间戳，所以此源取**当天** session 的 user turns 作近似，不能精确到两小时。
+- **AI sessions** — 我和 AI 的讨论（我的 `## User` turns）。导出 markdown 的 turn 标题已带逐条 `HH:MM` 时间戳（OpenCode export + Claude Code JSONL 均已补），collector 用 frontmatter date + turn HH:MM 组合出精确 datetime 后按窗口过滤。
 
 输出是分三段的纯文本，缺失/不可用的源给出明确标记，不静默省略。每个源独立降级，单源失败不影响整体。
 
@@ -71,7 +71,7 @@ eink-diary collect --output ctx.txt       # 写文件
 eink-diary collect --end 2026-06-06T10:00 --output ctx.txt
 eink-diary synthesize --input ctx.txt --output prompt.txt
 # 或管道：eink-diary collect ... | eink-diary synthesize
-eink-diary-image -p "$(cat prompt.txt)" --aspect-ratio 3:4 --size 1K --quality medium -o out.png
+eink-diary-image -p "$(cat prompt.txt)" --aspect-ratio 3:4 --size 2K --quality medium -o out.png
 ```
 
 LLM 后端 provider 无关，由 `.env` 三个变量驱动（换 provider 只改这三个）：
