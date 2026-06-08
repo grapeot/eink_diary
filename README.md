@@ -80,7 +80,7 @@ curl -F "file=@out.png" http://<pi-ip>:8080/api/display
 curl -F "url=https://example.com/a.png" http://<pi-ip>:8080/api/display
 ```
 
-`eink-diary run` 推送时，若 `EINK_ROTATE_180` 开启（默认 true），会在 POST 前把整张图物理旋转 180°——用于屏上下颠倒挂反的情况。旋转只作用于推送出去的字节，原图归档保持正向。屏正向安装时设 `EINK_ROTATE_180=0` 关闭即可。
+`eink-diary run` 推送时，若 `EINK_ROTATE_180` 开启（显式设为 1/true/yes），会在 POST 前把整张图物理旋转 180°——用于屏上下颠倒挂反的情况。旋转只作用于推送出去的字节，原图归档保持正向。默认不旋转（屏已正向安装）。
 
 ### 部署
 
