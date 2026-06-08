@@ -8,6 +8,7 @@
 - 新增 `DIARY_AI_SESSIONS_AUTO_EXPORT=0/false/no` 逃生开关和 `DIARY_AI_SESSIONS_EXPORT_TIMEOUT` 超时配置；默认每次分析前刷新，避免两小时图只读到凌晨 04:00 的旧导出。
 - 新增 `eink-diary run` 本地 debug log：默认写入 `logs/run_debug/`（gitignored），记录两小时 context、moment 判断结果、fallback 全天 context、最终 prompt 和 manifest，方便复盘 AI 判断链路。
 - 调整 moment prompt 的 fallback 标准：多主题/多线程/素材分散不再等同于信息不足；只要有具体工程动作、判断、调试或决定，就优先挑一个单一瞬间来画。
+- 微信源从只取“我发出的文本”改为“以我发出的文本为触发点，带同一会话窗口内前后各两条文本上下文”，并按 DB row 去重，避免模型只看到回应、看不到对话背景。
 
 ### 2026-06-05
 
@@ -64,6 +65,7 @@
 
 - AI sessions 导出 markdown 只有 session 级 `date`、无逐条时间戳，无法精确过滤到两小时。collector 此源退而取"当天" user turns 作近似。若要精确，需改导出器带消息级时间戳。
 - 微信 DB 必须只读打开（`file:...?mode=ro`），绝不写回 `Msg/`。消息按库分片不按时间，必须扫全部 `MSG*.db`。
+- 微信片段只看我说的话会丢掉语义锚点。更好的边界是用我发出的消息作为触发点，但把同一会话局部前后文带上；上下文仍限制在当前时间窗内，避免历史回放时引入窗口之后的未来消息。
 - resend received list 的输出可能是 python-dict 风格文本（单引号 + has_more 尾巴），不是严格 JSON；解析要兼容两种。
 - test fixture 里的群 ID/邮箱必须自己编 fake 值，不要从真实 DB/收件箱粘贴。
 - **`op` 命令静默挂起的坑**：1Password 升级后首次启动 `op` 时，macOS Gatekeeper 会弹 "downloaded from internet 是否打开" 对话框，`op` 进程会一直等这个系统对话框被点掉。表现是所有走 `op run`/`op read` 的命令无限挂起、后台任务超时、甚至出现 "exit 0 但无产出"（拿到空 key 静默退出）的假象。排查时先 `op whoami` 确认 op 能否非交互工作；若卡住，去电脑前点掉那个 Gatekeeper 对话框。不是 service account token 的问题。
