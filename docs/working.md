@@ -2,6 +2,10 @@
 
 ## Changelog
 
+### 2026-06-08
+
+- 新增 `eink-diary run --full-day`，把“全天版本”的时间窗语义固化到 CLI：本地时间 00:00–02:00 之间自动取昨天完整一天；其他时间取今天 00:00 到当前时刻。避免午夜后 agent 手算成当天前几分钟。
+
 ### 2026-06-07
 
 - 修复 `eink-diary run` / `collect` 读取 AI sessions 前不刷新导出的问题：若配置了 `DIARY_AI_SESSIONS_REPO`，采集前会自动调用该 repo 内的 `scripts/export_sessions.sh` / `export_sessions.sh` / `export_sessions.py`。

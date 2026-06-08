@@ -8,11 +8,25 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import datetime
+from datetime import datetime, time, timedelta
 
 from .collector import collect, format_text
 from .config import Config
 from .sources.ai_sessions import export_ai_sessions
+
+
+def resolve_full_day_window(now: datetime | None = None) -> tuple[datetime, int]:
+    """Resolve the user-facing "全天" window for `run --full-day`.
+
+    Before 02:00, "全天" means yesterday's completed day. Otherwise it means
+    today from local midnight to now.
+    """
+    now = now or datetime.now()
+    today_start = datetime.combine(now.date(), time.min)
+    if now < today_start + timedelta(hours=2):
+        return today_start, 24 * 60
+    minutes = int((now - today_start).total_seconds() // 60)
+    return now, minutes
 
 
 def _add_collect_parser(sub: argparse._SubParsersAction) -> None:
@@ -113,6 +127,11 @@ def _add_run_parser(sub: argparse._SubParsersAction) -> None:
     )
     p.add_argument("--minutes", type=int, default=None, help="时间窗长度，默认配置值")
     p.add_argument("--end", type=str, default=None, help="时间窗右端 ISO8601，默认 now")
+    p.add_argument(
+        "--full-day",
+        action="store_true",
+        help="全天窗口：0-2 点取昨天完整一天，其余时间取今天 00:00 到现在",
+    )
     p.add_argument("--size", type=str, default="2K", help="图像尺寸，默认 2K")
     p.add_argument("--quality", type=str, default="medium", help="gpt-image-2 质量，默认 medium")
     p.add_argument("--output-prefix", type=str, default="eink_diary_out", help="图输出前缀")
@@ -123,6 +142,12 @@ def _run_run(args: argparse.Namespace) -> int:
     from .pipeline import run_once
 
     end = None
+    minutes = args.minutes
+    if args.full_day:
+        if args.end or args.minutes is not None:
+            print("--full-day 不能和 --end/--minutes 同时使用", file=sys.stderr)
+            return 2
+        end, minutes = resolve_full_day_window()
     if args.end:
         try:
             end = datetime.fromisoformat(args.end)
@@ -132,7 +157,7 @@ def _run_run(args: argparse.Namespace) -> int:
     try:
         result = run_once(
             end=end,
-            minutes=args.minutes,
+            minutes=minutes,
             output_prefix=args.output_prefix,
             image_size=args.size,
             quality=args.quality,
