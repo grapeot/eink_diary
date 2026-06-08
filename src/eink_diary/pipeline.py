@@ -9,6 +9,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import shutil
 import urllib.request
 from datetime import datetime
 from pathlib import Path
@@ -53,6 +54,64 @@ def _write_manifest(run_dir: Path | None, manifest: dict) -> None:
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+
+
+def _archive_root() -> Path | None:
+    raw = os.environ.get("DIARY_ARCHIVE_DIR")
+    if raw is None or raw.strip() == "":
+        return None
+    return Path(raw)
+
+
+def _archive_slot_dir(win_end: datetime) -> Path | None:
+    root = _archive_root()
+    if root is None:
+        return None
+    return root / f"{win_end:%Y-%m-%d}" / f"{win_end:%H%M}"
+
+
+def _archive_image_name(image_path: str) -> str:
+    suffix = Path(image_path).suffix.lower()
+    if suffix not in {".jpg", ".jpeg", ".png", ".webp"}:
+        suffix = ".png"
+    if suffix == ".jpeg":
+        suffix = ".jpg"
+    return "image" + suffix
+
+
+def _write_archive_manifest(archive_dir: Path | None, manifest: dict) -> None:
+    if archive_dir is None:
+        return
+    (archive_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _archive_run(
+    win_end: datetime,
+    image_path: str,
+    prompt: str,
+    context_text: str,
+    manifest: dict,
+) -> Path | None:
+    """Persist the generated diary frame under DIARY_ARCHIVE_DIR, if configured."""
+    archive_dir = _archive_slot_dir(win_end)
+    if archive_dir is None:
+        return None
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    archived_image = archive_dir / _archive_image_name(image_path)
+    shutil.copy2(image_path, archived_image)
+    (archive_dir / "prompt.txt").write_text(prompt + "\n", encoding="utf-8")
+    (archive_dir / "context_private.md").write_text(context_text, encoding="utf-8")
+    manifest["archive"] = {
+        "dir": str(archive_dir),
+        "image": archived_image.name,
+        "prompt": "prompt.txt",
+        "context_private": "context_private.md",
+    }
+    _write_archive_manifest(archive_dir, manifest)
+    return archive_dir
 
 
 def _source_summary(results) -> list[dict]:
@@ -211,6 +270,16 @@ def run_once(
     if image_path is None:
         raise RuntimeError(f"出图失败: {last_err}")
 
+    manifest.update({
+        "final_prompt_chars": len(prompt),
+        "image_path": image_path,
+        "pushed": False,
+        "push_result": None,
+        "note": note,
+    })
+    archive_dir = _archive_run(win_end, image_path, prompt, context_text, manifest)
+    _write_manifest(run_log_dir, manifest)
+
     # 4) 推送 Pi
     pushed = False
     push_result = None
@@ -230,6 +299,7 @@ def run_once(
         "note": note,
     })
     _write_manifest(run_log_dir, manifest)
+    _write_archive_manifest(archive_dir, manifest)
 
     return {
         "window": f"{start:%Y-%m-%dT%H:%M}..{win_end:%H:%M}",
@@ -240,4 +310,5 @@ def run_once(
         "push_result": push_result,
         "note": note,
         "run_log_dir": str(run_log_dir) if run_log_dir else None,
+        "archive_dir": str(archive_dir) if archive_dir else None,
     }

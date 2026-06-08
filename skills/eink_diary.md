@@ -124,9 +124,21 @@ crontab 示例（每两小时，白天）：
 
 ## 输出规格
 
-- 图：竖版 3:4，适配 1200×1600，存当天日期目录。
-- scene prompt：与图同目录的文本文件。
-- 归档根目录由 `DIARY_ARCHIVE_DIR` 配置（本地，不进仓库）。
+- 图：竖版 3:4，适配 1200×1600。
+- 归档根目录由 `DIARY_ARCHIVE_DIR` 配置（本地，不进仓库）。配置后，每次成功出图都会写入 `DIARY_ARCHIVE_DIR/YYYY-MM-DD/HHMM/`，其中 `HHMM` 是刷新时刻（时间窗右端）。
+- 每个归档槽包含 `image.*`、`prompt.txt`、`context_private.md`、`manifest.json`。`context_private.md` 是私有审计材料，后续公开站不得直接读取。
+
+## Local Preview（本地浏览）
+
+归档图可以生成一个本地静态 preview 页面，方便按天回看。这个 preview 只做本地浏览，不做发布、不做隐私审核、不上传。
+
+```bash
+python scripts/build_preview.py --diary-dir diary --output diary/index.html
+```
+
+生成后打开 `diary/index.html`。页面按天显示日历卡片；点开某一天后展开当天所有图，桌面端固定四列，prompt 默认折叠。
+
+当用户要求“生成 diary preview / 本地浏览 / 看所有墨记图”时，直接运行上述命令。`diary/` 已被 gitignore，生成的 `index.html` 和图片归档不会进仓库。
 
 ## 已知陷阱
 

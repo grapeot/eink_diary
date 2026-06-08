@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 
 import pytest
 
@@ -76,6 +77,57 @@ def test_no_push_when_disabled(monkeypatch):
     result = pipeline.run_once(push=False)
     assert result["pushed"] is False
     assert called["push"] is False
+
+
+def test_run_archives_image_prompt_context_and_manifest(monkeypatch, tmp_path):
+    monkeypatch.setenv("DIARY_ARCHIVE_DIR", str(tmp_path / "diary"))
+    monkeypatch.setattr(pipeline, "synthesize", lambda text, cfg, mode="moment": "final prompt")
+
+    src_image = tmp_path / "generated.jpg"
+    src_image.write_bytes(b"fake image bytes")
+    import eink_diary.imagegen.core as core
+    monkeypatch.setattr(core, "generate", lambda **kw: str(src_image))
+
+    result = pipeline.run_once(push=False)
+
+    archive_dir = tmp_path / "diary" / "2026-06-06" / "1000"
+    assert result["archive_dir"] == str(archive_dir)
+    assert (archive_dir / "image.jpg").read_bytes() == b"fake image bytes"
+    assert (archive_dir / "prompt.txt").read_text(encoding="utf-8") == "final prompt\n"
+    assert (archive_dir / "context_private.md").read_text(encoding="utf-8") == "素材文本"
+    manifest = json.loads((archive_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["window"]["start"] == "2026-06-06T08:00:00"
+    assert manifest["window"]["end"] == "2026-06-06T10:00:00"
+    assert manifest["image_path"] == str(src_image)
+    assert manifest["archive"]["image"] == "image.jpg"
+    assert manifest["archive"]["prompt"] == "prompt.txt"
+    assert manifest["archive"]["context_private"] == "context_private.md"
+    assert manifest["pushed"] is False
+
+
+def test_run_archives_before_push_failure(monkeypatch, tmp_path):
+    monkeypatch.setenv("DIARY_ARCHIVE_DIR", str(tmp_path / "diary"))
+    monkeypatch.setattr(pipeline, "synthesize", lambda text, cfg, mode="moment": "p")
+
+    src_image = tmp_path / "generated.png"
+    src_image.write_bytes(b"png bytes")
+    import eink_diary.imagegen.core as core
+    monkeypatch.setattr(core, "generate", lambda **kw: str(src_image))
+
+    def push_boom(*args, **kwargs):
+        raise RuntimeError("pi offline")
+
+    monkeypatch.setattr(pipeline, "push_to_server", push_boom)
+
+    with pytest.raises(RuntimeError, match="pi offline"):
+        pipeline.run_once(push=True)
+
+    archive_dir = tmp_path / "diary" / "2026-06-06" / "1000"
+    assert (archive_dir / "image.png").read_bytes() == b"png bytes"
+    assert (archive_dir / "prompt.txt").exists()
+    manifest = json.loads((archive_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["pushed"] is False
+    assert manifest["push_result"] is None
 
 
 def _make_split_image(path, top_color, bottom_color, size=(4, 8)):

@@ -5,6 +5,8 @@
 ### 2026-06-08
 
 - 新增 `eink-diary run --full-day`，把“全天版本”的时间窗语义固化到 CLI：本地时间 00:00–02:00 之间自动取昨天完整一天；其他时间取今天 00:00 到当前时刻。避免午夜后 agent 手算成当天前几分钟。
+- 新增 `docs/preview.md`，把当前阶段从公开分享站收敛为本地静态 preview：`diary/index.html` 按天展示视觉日记，发布和隐私审核留给后续独立流程。
+- 打通正式图像归档链路：`DIARY_ARCHIVE_DIR` 配置后，`eink-diary run` 会按刷新时刻写入 `YYYY-MM-DD/HHMM/`，保存 `image.*`、`prompt.txt`、`context_private.md`、`manifest.json`；归档发生在推送 Pi 前，设备离线不会导致已生成图片丢失。
 
 ### 2026-06-07
 
