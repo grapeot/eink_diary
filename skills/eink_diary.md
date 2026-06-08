@@ -89,6 +89,7 @@ LLM 后端 provider 无关，由 `.env` 三个变量驱动（换 provider 只改
 ```bash
 eink-diary run                          # 默认前两小时，2K medium，出图后推送 Pi
 eink-diary run --end 2026-06-06T20:00   # 回放历史窗口
+eink-diary run --full-day               # 全天：0-2 点取昨天完整一天，其余时间取今天 00:00 到现在
 eink-diary run --no-push                # 只出图不推送
 ```
 
@@ -99,6 +100,9 @@ eink-diary run --no-push                # 只出图不推送
   换措辞再试（默认最多 2 次）。不做视觉内容审查（保持简单、cron 友好）。
 - **推送目标**从 `.env` 的 `EINK_SERVER_URL` 读（如 `http://<pi-ip>:8080`），multipart POST
   到 `/api/display`。未配置则跳过推送。
+- **全天语义**：用户说“今天全天/全天版本”时优先用 `--full-day`，不要手算
+  `--minutes`。本地时间 00:00–02:00 之间，`--full-day` 自动解释为昨天完整一天
+  （`yesterday 00:00..today 00:00`）；其他时间解释为今天从 00:00 到当前时刻。
 
 crontab 示例（每两小时，白天）：
 

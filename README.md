@@ -34,6 +34,7 @@
 eink-diary collect      # 采集某时间窗的素材 → 纯文本
 eink-diary synthesize   # 素材 → 一段画面描述（image prompt）
 eink-diary run          # one-shot：采集→挑瞬间→出图→推送 Pi（供 cron 每两小时一次）
+eink-diary run --full-day # 全天：0-2 点取昨天完整一天，其余时间取今天 00:00 到现在
 eink-diary-image        # 内化的图像生成 CLI
 ```
 
