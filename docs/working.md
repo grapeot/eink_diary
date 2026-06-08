@@ -6,6 +6,8 @@
 
 - 修复 `eink-diary run` / `collect` 读取 AI sessions 前不刷新导出的问题：若配置了 `DIARY_AI_SESSIONS_REPO`，采集前会自动调用该 repo 内的 `scripts/export_sessions.sh` / `export_sessions.sh` / `export_sessions.py`。
 - 新增 `DIARY_AI_SESSIONS_AUTO_EXPORT=0/false/no` 逃生开关和 `DIARY_AI_SESSIONS_EXPORT_TIMEOUT` 超时配置；默认每次分析前刷新，避免两小时图只读到凌晨 04:00 的旧导出。
+- 新增 `eink-diary run` 本地 debug log：默认写入 `logs/run_debug/`（gitignored），记录两小时 context、moment 判断结果、fallback 全天 context、最终 prompt 和 manifest，方便复盘 AI 判断链路。
+- 调整 moment prompt 的 fallback 标准：多主题/多线程/素材分散不再等同于信息不足；只要有具体工程动作、判断、调试或决定，就优先挑一个单一瞬间来画。
 
 ### 2026-06-05
 
@@ -71,3 +73,4 @@
 - scene prompt 是必须可单独 inspect/重放的中间产物，要和图一起归档——调风格、重试、审计都依赖它。
 - 风格选型样本在 workspace `tmp/ambient_eink_art/`（tmp 随时可能清，正式选定后要把风格描述固化进 config，不要依赖 tmp 里的文件长期存在）。
 - 定时视觉日记依赖 AI sessions 时，导出刷新必须属于 e-ink pipeline 自己的前置步骤，而不能只依赖每日 cron；两小时窗口对新鲜度的要求高于每日索引任务。
+- `FALLBACK` 不能只看主题数量。高信号但多线程的窗口仍然适合画单一瞬间；fallback 应保留给几乎没有主动行为、只有自动通知、或全是无上下文测试句的窗口。AI 判断链路必须落 debug log，否则事后只能从最终图反推原因。

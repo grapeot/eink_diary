@@ -96,6 +96,14 @@ def test_moment_mode_default_system_prompt():
     assert msgs[0]["content"] == SYSTEM_PROMPT
 
 
+def test_moment_prompt_discourages_fallback_for_multithreaded_work():
+    from eink_diary.synthesize import SYSTEM_PROMPT
+
+    assert "多主题、多线程、素材分散，不等于不够画" in SYSTEM_PROMPT
+    assert "只要素材里出现了一个具体动作" in SYSTEM_PROMPT
+    assert "就必须从里面挑最强的一个" in SYSTEM_PROMPT
+
+
 def test_eink_suffix_appended_to_prompt():
     from eink_diary.synthesize import EINK_COLOR_SUFFIX
     client = _FakeClient(text="A clay duck scene")

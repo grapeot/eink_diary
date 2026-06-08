@@ -200,6 +200,40 @@ def test_fallback_triggers_collage(monkeypatch):
     assert result["image_path"] == "/tmp/c.png"
 
 
+def test_run_writes_debug_log_for_fallback(monkeypatch, tmp_path):
+    """run debug log records the decision chain without needing terminal scrollback."""
+    calls = []
+
+    monkeypatch.setenv("DIARY_RUN_LOG_DIR", str(tmp_path / "run_debug"))
+
+    def fake_synth(text, cfg, mode="moment"):
+        calls.append((mode, text))
+        return "FALLBACK" if mode == "moment" else "A collage of duck's day"
+
+    def fake_format(start, end, results, minutes):
+        return f"# window: {start:%Y-%m-%dT%H:%M} .. {end:%Y-%m-%dT%H:%M} ({minutes} min)\n"
+
+    monkeypatch.setattr(pipeline, "synthesize", fake_synth)
+    monkeypatch.setattr(pipeline, "format_text", fake_format)
+    import eink_diary.imagegen.core as core
+    monkeypatch.setattr(core, "generate", lambda **kw: "/tmp/c.png")
+
+    result = pipeline.run_once(push=False)
+
+    assert result["run_log_dir"]
+    run_dir = tmp_path / "run_debug"
+    dirs = list(run_dir.iterdir())
+    assert len(dirs) == 1
+    logged = dirs[0]
+    assert (logged / "01_window_context.md").exists()
+    assert (logged / "02_moment_result.txt").read_text(encoding="utf-8") == "FALLBACK"
+    assert (logged / "03_fallback_day_context.md").exists()
+    assert (logged / "04_collage_prompt.txt").read_text(encoding="utf-8") == "A collage of duck's day"
+    manifest = (logged / "manifest.json").read_text(encoding="utf-8")
+    assert '"moment_result": "fallback"' in manifest
+    assert '"note": "fallback: collage(全天)"' in manifest
+
+
 def test_exports_ai_sessions_before_collect(monkeypatch):
     calls = []
 

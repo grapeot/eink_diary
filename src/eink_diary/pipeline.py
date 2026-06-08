@@ -7,14 +7,64 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import urllib.request
 from datetime import datetime
+from pathlib import Path
 
 from .collector import collect, format_text
 from .config import Config
 from .sources.ai_sessions import export_ai_sessions
 from .synthesize import SynthConfig, is_fallback, synthesize
+
+
+def _run_log_root() -> Path | None:
+    """Return local debug log root, or None when explicitly disabled."""
+    raw = os.environ.get("DIARY_RUN_LOG_DIR", "logs/run_debug")
+    if raw.strip().lower() in {"0", "false", "no", "off", ""}:
+        return None
+    return Path(raw)
+
+
+def _safe_ts(dt: datetime) -> str:
+    return dt.strftime("%Y%m%d_%H%M")
+
+
+def _new_run_log_dir(start: datetime, end: datetime) -> Path | None:
+    root = _run_log_root()
+    if root is None:
+        return None
+    run_dir = root / f"{datetime.now():%Y%m%d_%H%M%S}_{_safe_ts(start)}_{_safe_ts(end)}"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    return run_dir
+
+
+def _write_debug_text(run_dir: Path | None, name: str, text: str) -> None:
+    if run_dir is None:
+        return
+    (run_dir / name).write_text(text, encoding="utf-8")
+
+
+def _write_manifest(run_dir: Path | None, manifest: dict) -> None:
+    if run_dir is None:
+        return
+    (run_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _source_summary(results) -> list[dict]:
+    return [
+        {
+            "name": r.name,
+            "available": r.available,
+            "count": len(r.snippets),
+            "error": r.error,
+        }
+        for r in results
+    ]
 
 
 def _is_moderation_error(exc: Exception) -> bool:
@@ -98,11 +148,23 @@ def run_once(
     start, win_end, results = collect(config, end=end, minutes=minutes)
     win_minutes = int((win_end - start).total_seconds() // 60)
     context_text = format_text(start, win_end, results, win_minutes)
+    run_log_dir = _new_run_log_dir(start, win_end)
+    manifest = {
+        "window": {"start": start.isoformat(), "end": win_end.isoformat(), "minutes": win_minutes},
+        "sources": _source_summary(results),
+        "context_chars": len(context_text),
+        "export_note": export_note,
+    }
+    _write_debug_text(run_log_dir, "01_window_context.md", context_text)
+    _write_manifest(run_log_dir, manifest)
 
     # 2) 挑瞬间写 prompt
     synth_cfg = SynthConfig.from_env()
     note = export_note or ""
     prompt = synthesize(context_text, synth_cfg, mode="moment")
+    _write_debug_text(run_log_dir, "02_moment_result.txt", prompt)
+    manifest["moment_result"] = "fallback" if is_fallback(prompt) else "prompt"
+    _write_manifest(run_log_dir, manifest)
 
     # 2b) fallback：窗口信息不足 → 用【今天整体】素材画拼贴（质地镜头）
     if is_fallback(prompt):
@@ -112,7 +174,17 @@ def run_once(
         day_minutes = max(int((win_end - day_start).total_seconds() // 60), win_minutes)
         d_start, d_end, d_results = collect(config, end=win_end, minutes=day_minutes)
         day_context = format_text(d_start, d_end, d_results, day_minutes)
+        _write_debug_text(run_log_dir, "03_fallback_day_context.md", day_context)
+        manifest["fallback"] = {
+            "window": {"start": d_start.isoformat(), "end": d_end.isoformat(), "minutes": day_minutes},
+            "sources": _source_summary(d_results),
+            "context_chars": len(day_context),
+        }
         prompt = synthesize(day_context, synth_cfg, mode="collage")
+        _write_debug_text(run_log_dir, "04_collage_prompt.txt", prompt)
+        _write_manifest(run_log_dir, manifest)
+    else:
+        _write_debug_text(run_log_dir, "03_final_prompt.txt", prompt)
 
     # 3) 出图，moderation 失败重试（重跑 synthesize 换措辞）
     image_path = None
@@ -133,6 +205,7 @@ def run_once(
                 # 重新换措辞再试（LLM 有随机性，换个说法常能过审）
                 note = (note + "; " if note else "") + f"moderation retry #{attempt + 1}"
                 prompt = synthesize(context_text, synth_cfg, mode="moment")
+                _write_debug_text(run_log_dir, f"moderation_retry_{attempt + 1}_prompt.txt", prompt)
                 continue
             raise
     if image_path is None:
@@ -149,6 +222,15 @@ def run_once(
             push_result = push_to_server(image_path, server)
             pushed = True
 
+    manifest.update({
+        "final_prompt_chars": len(prompt),
+        "image_path": image_path,
+        "pushed": pushed,
+        "push_result": push_result,
+        "note": note,
+    })
+    _write_manifest(run_log_dir, manifest)
+
     return {
         "window": f"{start:%Y-%m-%dT%H:%M}..{win_end:%H:%M}",
         "context_chars": len(context_text),
@@ -157,4 +239,5 @@ def run_once(
         "pushed": pushed,
         "push_result": push_result,
         "note": note,
+        "run_log_dir": str(run_log_dir) if run_log_dir else None,
     }
