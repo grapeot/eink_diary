@@ -196,8 +196,8 @@ def render_html(days: list[DayGroup]) -> str:
     .date {{ font-size: 36px; font-weight: 820; letter-spacing: -0.055em; }}
     .day-subtitle {{ color: var(--muted); margin-top: 4px; }}
     .open-hint {{ padding: 0 22px 22px; color: var(--amber); font-weight: 760; }}
-    .day-detail {{ max-height: 0; opacity: 0; overflow: hidden; transform: translateY(-8px); transition: max-height 520ms ease, opacity 300ms ease, transform 420ms ease; }}
-    .day-card.open .day-detail {{ max-height: 5000px; opacity: 1; transform: translateY(0); }}
+    .day-detail {{ height: 0; opacity: 0; overflow: hidden; visibility: hidden; transform: translateY(-8px); transition: opacity 300ms ease, transform 420ms ease; }}
+    .day-card.open .day-detail {{ height: auto; opacity: 1; overflow: visible; visibility: visible; transform: translateY(0); }}
     .detail-header {{ display: flex; justify-content: space-between; gap: 20px; align-items: start; padding: 28px 30px 12px; border-top: 1px solid var(--line); background: linear-gradient(180deg, rgba(255,255,255,0.22), transparent); }}
     .detail-header h2 {{ margin: 0; font-size: 32px; letter-spacing: -0.045em; }}
     .detail-header p {{ margin: 4px 0 0; color: var(--muted); }}

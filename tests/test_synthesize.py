@@ -104,6 +104,14 @@ def test_moment_prompt_discourages_fallback_for_multithreaded_work():
     assert "就必须从里面挑最强的一个" in SYSTEM_PROMPT
 
 
+def test_system_prompt_keeps_duck_name_in_chinese():
+    from eink_diary.synthesize import COLLAGE_SYSTEM_PROMPT, SYSTEM_PROMPT
+
+    assert '写成 "鸭哥"' in SYSTEM_PROMPT
+    assert '禁止写 "Duck哥"' in SYSTEM_PROMPT
+    assert '禁止写 "Duck哥"' in COLLAGE_SYSTEM_PROMPT
+
+
 def test_eink_suffix_appended_to_prompt():
     from eink_diary.synthesize import EINK_COLOR_SUFFIX
     client = _FakeClient(text="A clay duck scene")

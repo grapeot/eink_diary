@@ -4,6 +4,8 @@
 
 ### 2026-06-08
 
+- 修复本地 preview 展开态用固定 `max-height: 5000px` 的隐性裁切问题；当天图片或 prompt 较多时，展开区域改为按内容自然高度显示，避免最后一排图被截断。
+- 调整 synthesize 系统提示：英文 image prompt 中主角名字必须保留中文 `鸭哥`，禁止生成 `Duck哥` / `duck哥` 这类半翻译称呼。
 - 新增 `eink-diary run --full-day`，把“全天版本”的时间窗语义固化到 CLI：本地时间 00:00–02:00 之间自动取昨天完整一天；其他时间取今天 00:00 到当前时刻。避免午夜后 agent 手算成当天前几分钟。
 - 新增 `docs/preview.md`，把当前阶段从公开分享站收敛为本地静态 preview：`diary/index.html` 按天展示视觉日记，发布和隐私审核留给后续独立流程。
 - 打通正式图像归档链路：`DIARY_ARCHIVE_DIR` 配置后，`eink-diary run` 会按刷新时刻写入 `YYYY-MM-DD/HHMM/`，保存 `image.*`、`prompt.txt`、`context_private.md`、`manifest.json`；归档发生在推送 Pi 前，设备离线不会导致已生成图片丢失。
