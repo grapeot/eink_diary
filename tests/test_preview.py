@@ -94,3 +94,16 @@ def test_empty_preview_has_empty_state(tmp_path):
     assert "0 days" in html
     assert "0 frames" in html
     assert "还没有归档图" in html
+
+
+def test_open_day_detail_does_not_use_fixed_max_height(tmp_path):
+    mod = _load_preview_module()
+    diary = tmp_path / "diary"
+    for slot in ("0800", "1000", "1200", "1400", "1600", "1800", "2000", "2200"):
+        _write_slot(diary, "2026-06-06", slot, prompt="long prompt\n" * 80)
+
+    index = mod.build_preview(diary, diary / "index.html")
+    html = index.read_text(encoding="utf-8")
+
+    assert "max-height: 5000px" not in html
+    assert ".day-card.open .day-detail { height: auto" in html
