@@ -132,13 +132,35 @@ crontab 示例（每两小时，白天）：
 
 归档图可以生成一个本地静态 preview 页面，方便按天回看。这个 preview 只做本地浏览，不做发布、不做隐私审核、不上传。
 
+### 构建 preview
+
 ```bash
 python scripts/build_preview.py --diary-dir diary --output diary/index.html
 ```
 
 生成后打开 `diary/index.html`。页面按天显示日历卡片；点开某一天后展开当天所有图，桌面端固定四列，prompt 默认折叠。
 
-当用户要求“生成 diary preview / 本地浏览 / 看所有墨记图”时，直接运行上述命令。`diary/` 已被 gitignore，生成的 `index.html` 和图片归档不会进仓库。
+当用户要求"生成 diary preview / 本地浏览 / 看所有墨记图"时，直接运行上述命令。`diary/` 已被 gitignore，生成的 `index.html` 和图片归档不会进仓库。
+
+### Preview Web Server（后台浏览服务）
+
+在 `diary/` 目录启动一个轻量 HTTP server，局域网内可直接用浏览器访问：
+
+```bash
+cd diary && .venv/bin/python -m http.server 8123 --bind 0.0.0.0 &
+```
+
+启动后访问 `http://localhost:8123`（或局域网 IP `http://<your-ip>:8123`）。
+
+检查是否已在运行：
+
+```bash
+lsof -i :8123
+```
+
+如果端口被占用说明 server 已在后台运行，直接访问即可。每次新增归档图后，重新运行 `build_preview.py` 刷新 `index.html` 即可，不需要重启 server。
+
+当用户要求"启动 diary preview server / 后台跑 preview / 局域网看墨记"时，先 build preview 再启动（或确认）server。
 
 ## 已知陷阱
 
