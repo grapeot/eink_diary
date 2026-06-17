@@ -8,6 +8,7 @@
 - 数据源 adapter 的解析逻辑：给定 fixture（fake 邮件 / fake session 导出），正确产出 `ContextSnippet`。adapter 必须能用 fake fixture 离线测试，不打真实网络。
 - 降级逻辑：数据源返回空时，pipeline 走到占位画分支而非抛异常。
 - 配置解析：风格基调、数据源开关、时间窗能正确从 config 读出。
+- 直显 CLI：`eink-diary display IMAGE` 能解析参数、校验图片存在、读取 `EINK_SERVER_URL` / `--server-url`，并调用统一推送函数；测试中 mock 网络，不碰真实设备。
 
 默认测试必须 offline，不调用真实的 Resend / 图像生成 / 设备。
 
@@ -30,13 +31,14 @@
 - scene prompt 内容应能合理对应那个时间窗的真实近况（可人工核对"AI 把我这两小时理解对了吗"）。
 - 图应为竖版 3:4、色块清晰、适配 E6 六色（无需照片级还原）。
 - 设备在场时：图正确刷上屏，无白屏、无残留报错画面。
+- 直显手工验证：`eink-diary display path/to/image.png` 返回 server `ok=true`，Pi 的 `/api/state` 显示已有 current image。
 
 ## 隐私验证（公开仓库强制）
 
-发布前跑隐私扫描，零匹配才算通过：
+发布前跑隐私扫描。允许 `.env.example`、README 和测试里的 fake placeholder / generic `op://your-vault/...` 示例；真实邮箱、真实手机号、真实主机、真实私有路径、真实 1Password item 名称必须零匹配。
 
 ```bash
-rg -n "真实邮箱|真实手机号|内部服务器|op://|私有路径" .
+rg -n --glob '!docs/test.md' "grapeot@|ya@|outlook|pomail|/Users/grapeot|op://dev|sk-[A-Za-z0-9]{20,}" .
 ```
 
 fixture 必须用 fake 数据（`alice@example.com` 等），不能用真实邮件/聊天内容。

@@ -87,13 +87,19 @@ collector 自身很瘦：它**不重新实现、也不 import 任何数据源 sk
 
 E6 介质级不支持实用局刷，设备刷新只用 Waveshare 官方 SDK 全刷。任何后续 agent 不在驱动层尝试局刷 hack。完整理由见 PRD 附录。
 
+## D10：直显图片复用同一推送路径
+
+`eink-diary display IMAGE` 是一个薄 CLI wrapper：校验本地图片存在，读取 `EINK_SERVER_URL` 或 `--server-url`，然后复用 `pipeline.push_to_server()` multipart POST 到 Pi 的 `/api/display`。
+
+它刻意不在本机端重复做 resize、dithering 或设备格式转换。设备适配属于 Pi display server 的职责；这样 `run` 生成图和 `display` 直推图走同一条最终路径，旋转开关 `EINK_ROTATE_180`、multipart 协议、server 端状态文件都保持一致。
+
 ## 模块结构
 
 ```
 src/eink_diary/
 ├── sources/          # 采集 adapters（wechat/ai_sessions/resend，health 候选）
 ├── collector.py      # 瘦编排：按窗口采集、合并素材文件
-├── cli.py            # eink-diary collect / synthesize / run（采集层 + 判断层 + pipeline 入口）
+├── cli.py            # eink-diary collect / synthesize / run / display
 ├── imagegen/         # 内化的图像生成 CLI（输出端，eink-diary-image）
 ├── synthesize.py     # 判断层：素材文件 → 画面描述（可插拔后端）
 ├── pipeline.py       # 端到端管线：采集 → 挑瞬间 → 出图 → 推送 Pi（供 cron）
@@ -109,6 +115,7 @@ src/eink_diary/
 - ✅ 图像生成 CLI 内化。
 - ✅ 判断层 synthesize（挑瞬间 + 写 prompt）：已实现为 `eink-diary synthesize` 子命令，provider 无关（OpenAI SDK）。
 - ✅ 端到端管线 `eink-diary run`：采集 → 挑瞬间 → 出图（带 moderation 重试）→ 推送 Pi display server，真实硬件验证通过。
+- ✅ 本地图直显 `eink-diary display IMAGE`：复用 display server，把现成图片直接刷到 E6。
 - ✅ Pi 端 FastAPI display server（server/），收图→处理成 1200x1600 Spectra-6→刷屏。
 - ✅ Fallback 拼贴模式：窗口信息不足时自动用全天素材画"今日鸭哥拼贴"。
 - ✅ prompt 指南 + 早期模板（降级备选）。

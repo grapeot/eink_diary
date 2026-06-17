@@ -2,13 +2,16 @@
 
 子命令：
 - collect: 采集时间窗内的多源近况，合并成纯文本。
+- display: 把一张本地图片直接推送到 E-Ink display server。
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from datetime import datetime, time, timedelta
+from pathlib import Path
 
 from .collector import collect, format_text
 from .config import Config
@@ -138,6 +141,17 @@ def _add_run_parser(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--no-push", action="store_true", help="只出图不推送 Pi")
 
 
+def _add_display_parser(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("display", help="把一张本地图片直接推送到 E-Ink display server")
+    p.add_argument("image", type=str, help="本地图片路径")
+    p.add_argument(
+        "--server-url",
+        type=str,
+        default=None,
+        help="display server base URL；默认读 EINK_SERVER_URL",
+    )
+
+
 def _run_run(args: argparse.Namespace) -> int:
     from .pipeline import run_once
 
@@ -173,12 +187,38 @@ def _run_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_display(args: argparse.Namespace) -> int:
+    from .pipeline import push_to_server
+
+    image = Path(args.image)
+    if not image.exists() or not image.is_file():
+        print(f"图片不存在: {image}", file=sys.stderr)
+        return 2
+
+    server_url = args.server_url or os.environ.get("EINK_SERVER_URL")
+    if not server_url:
+        print("未配置 EINK_SERVER_URL；请设置环境变量或传 --server-url", file=sys.stderr)
+        return 2
+
+    try:
+        result = push_to_server(str(image), server_url)
+    except Exception as exc:  # noqa: BLE001
+        print(f"display 失败: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"图: {image}", file=sys.stderr)
+    print(f"推送: {server_url.rstrip('/')}/api/display", file=sys.stderr)
+    print(f"结果: {result}", file=sys.stderr)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="eink-diary", description="墨记 eink_diary")
     sub = parser.add_subparsers(dest="command", required=True)
     _add_collect_parser(sub)
     _add_synthesize_parser(sub)
     _add_run_parser(sub)
+    _add_display_parser(sub)
     return parser
 
 
@@ -191,6 +231,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_synthesize(args)
     if args.command == "run":
         return _run_run(args)
+    if args.command == "display":
+        return _run_display(args)
     parser.error(f"未知命令: {args.command}")
     return 2
 

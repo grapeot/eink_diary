@@ -38,6 +38,7 @@ eink-diary collect      # 采集某时间窗的素材 → 纯文本
 eink-diary synthesize   # 素材 → 一段画面描述（image prompt）
 eink-diary run          # one-shot：采集→挑瞬间→出图→推送 Pi（供 cron 每两小时一次）
 eink-diary run --full-day # 全天：0-2 点取昨天完整一天，其余时间取今天 00:00 到现在
+eink-diary display out.png # 把一张本地图片直接推送到 E-Ink
 eink-diary-image        # 内化的图像生成 CLI
 ```
 
@@ -78,6 +79,10 @@ eink-diary-image        # 内化的图像生成 CLI
 刷图示例：
 
 ```bash
+# 通过 eink-diary CLI 直推本地图片（推荐）
+eink-diary display out.png
+# 临时覆盖目标 server
+eink-diary display out.png --server-url http://<pi-ip>:8080
 # 直推本地图片文件（推荐）
 curl -F "file=@out.png" http://<pi-ip>:8080/api/display
 # 或给一个 Pi 能访问的 URL

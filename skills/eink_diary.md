@@ -110,6 +110,17 @@ crontab 示例（每两小时，白天）：
 0 8,10,12,14,16,18,20,22 * * * cd /path/to/eink_diary && op run --env-file=.env -- .venv/bin/eink-diary run >> run.log 2>&1
 ```
 
+## eink-diary display（本地图直显）
+
+把一张已经准备好的本地图片直接推送到 Pi display server，不采集、不调用 LLM、不生成图：
+
+```bash
+eink-diary display out.png
+eink-diary display out.png --server-url http://<pi-ip>:8080
+```
+
+默认目标从 `EINK_SERVER_URL` 读。CLI 只做本地文件校验和上传；Pi display server 会统一处理成 1200×1600 / Spectra-6 七色并全刷。`EINK_ROTATE_180` 的行为与 `eink-diary run` 推送一致。
+
 ## 方法论建议（非硬约束）
 
 - scene prompt 与图解耦：先产出可单独 inspect 的画面描述，再生成图。这样调风格不必重拉数据，生成失败可重放同一 prompt。
