@@ -3,7 +3,7 @@
 # 从 .env 读 deploy 目标（schema 与私有配置分离），再 rsync 传上去。
 #
 # .env 需要：
-#   EINK_DEPLOY_HOST=grapeot@192.168.x.x      # Pi 的 ssh 目标（passwordless）
+#   EINK_DEPLOY_HOST=pi-user@<pi-ip>          # Pi 的 ssh 目标（passwordless）
 #   EINK_DEPLOY_PATH=~/co/eink_diary_display   # Pi 上的部署路径
 set -euo pipefail
 

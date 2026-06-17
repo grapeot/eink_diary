@@ -2,6 +2,12 @@
 
 ## Changelog
 
+### 2026-06-17
+
+- 新增 `eink-diary display IMAGE [--server-url URL]`：把本地图片直接推送到 Pi display server。CLI 只校验图片存在、读取 `EINK_SERVER_URL` 或显式 URL，然后复用 `pipeline.push_to_server()`；设备端继续统一做 1200×1600 / Spectra-6 处理和全刷。
+- 更新 PRD/RFC/test/README/root skill，把“本地图直显”列为正式辅助功能。新增 CLI 单测覆盖命令注册、显式 server URL、缺配置和缺图片错误。
+- 调整 privacy review 文档：区分 `.env.example` 中允许的 fake placeholder / generic 1Password 示例，与真实邮箱、真实主机、真实私有路径、真实 1Password item 名称。
+
 ### 2026-06-08
 
 - 修复本地 preview 展开态用固定 `max-height: 5000px` 的隐性裁切问题；当天图片或 prompt 较多时，展开区域改为按内容自然高度显示，避免最后一排图被截断。

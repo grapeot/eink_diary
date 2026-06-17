@@ -15,6 +15,9 @@ def test_subcommands_registered():
     for sub in ("collect", "synthesize", "run"):
         ns = parser.parse_args([sub])
         assert ns.command == sub
+    ns = parser.parse_args(["display", "out.png"])
+    assert ns.command == "display"
+    assert ns.image == "out.png"
 
 
 def test_help_exits_zero(capsys):
@@ -59,3 +62,38 @@ def test_full_day_rejects_manual_window(capsys):
     assert code == 2
     err = capsys.readouterr().err
     assert "--full-day" in err
+
+
+def test_display_uses_explicit_server_url(monkeypatch, tmp_path, capsys):
+    img = tmp_path / "frame.png"
+    img.write_bytes(b"not inspected by cli")
+
+    calls = []
+
+    def fake_push(path, server_url, timeout=120):
+        calls.append((path, server_url, timeout))
+        return {"status": 200, "body": "ok"}
+
+    import eink_diary.pipeline as pipeline
+
+    monkeypatch.setattr(pipeline, "push_to_server", fake_push)
+    code = main(["display", str(img), "--server-url", "http://pi.test:8080"])
+    assert code == 0
+    assert calls == [(str(img), "http://pi.test:8080", 120)]
+    assert "/api/display" in capsys.readouterr().err
+
+
+def test_display_requires_server_url(monkeypatch, tmp_path, capsys):
+    img = tmp_path / "frame.png"
+    img.write_bytes(b"x")
+    monkeypatch.delenv("EINK_SERVER_URL", raising=False)
+
+    code = main(["display", str(img)])
+    assert code == 2
+    assert "EINK_SERVER_URL" in capsys.readouterr().err
+
+
+def test_display_rejects_missing_image(capsys):
+    code = main(["display", "/tmp/does-not-exist.png", "--server-url", "http://pi.test:8080"])
+    assert code == 2
+    assert "图片不存在" in capsys.readouterr().err
