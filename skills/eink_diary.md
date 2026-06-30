@@ -25,7 +25,7 @@
 采集与生成**全部复用 workspace 已有 skill**，本 skill 只负责编排：
 
 - 邮件 / 待办 → `resend_email_skill`（`received list/get`；凭证走 `op run --env-file=.env`）
-- 最近 AI sessions → `contexts/ai_sessions/export_sessions.py --since-date YYYY-MM-DD`
+- 最近 AI sessions → `contexts/ai_sessions/sync_sessions.sh`（调用 `adhoc_jobs/ai_session_export/`）
 - 微信"我说了什么"+ 上下文 → `wechat_messages` skill（待接入）
 - 图像生成 → `image_generation_skill` 的 `generate-image`；**中文标注用 `gpt-image-2`，纯意象用 Gemini**；竖版用 `--aspect-ratio 3:4`
 
@@ -109,6 +109,23 @@ crontab 示例（每两小时，白天）：
 ```
 0 8,10,12,14,16,18,20,22 * * * cd /path/to/eink_diary && op run --env-file=.env -- .venv/bin/eink-diary run >> run.log 2>&1
 ```
+
+### 定时任务与日志调试（workspace）
+
+在当前 workspace，`eink_diary` 的两小时定时刷新由 Process Launcher / background job manager 管理，不要只查裸 `crontab` 或项目目录下的旧日志。实际配置和日志入口：
+
+```bash
+# 定时任务配置
+adhoc_jobs/background_job_manager/config/launcher.yaml
+
+# heartbeat：确认某个时刻是否触发、退出码、是否 timeout/killed
+adhoc_jobs/background_job_manager/logs/heartbeat_YYYY-MM-DD.jsonl
+
+# stdout/stderr 输出
+adhoc_jobs/background_job_manager/logs/output/eink_diary_YYYYMMDD_HHMMSS.log
+```
+
+排查顺序：先看当天 heartbeat 里 `label: eink_diary` 的 `PROCESS_STARTED` / `PROCESS_EXITED`，再打开对应 `output_file`。如果 heartbeat 显示 `exit_code: 255` 且 `status: killed`，通常是 launcher timeout；若 output log 为空，同时 `diary/YYYY-MM-DD/HHMM/` 与 `logs/run_debug/` 没有对应目录，说明进程在归档前被 kill。
 
 ## eink-diary display（本地图直显）
 
