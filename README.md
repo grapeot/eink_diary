@@ -133,20 +133,9 @@ tmux new-session -d -s eink \
 
 ## 附录：macOS 28 前的 Arduino 工具链
 
-E-Ink Diary 的 Pi display server 不依赖 Arduino，但同一工作站上开发 ESP32 E-Ink 设备时可能遇到 Apple Silicon 兼容性问题。Arduino IDE 可能已经是原生 Apple Silicon 应用，而 Board Manager 安装的旧 `ctags` 仍是 Intel-only。macOS 27 还能借 Rosetta 执行它；从 macOS 28 起，Rosetta 不再为普通 Intel app 提供支持。
+E-Ink Diary 的 Pi display server 不依赖 Arduino，但同一工作站上开发 ESP32 E-Ink 设备时可能遇到 Arduino 的 ctags 问题。不要用 Homebrew `universal-ctags` 替换 Arduino package 内的 `ctags 5.8-arduino11`：两者的 prototype 输出格式不兼容，后者被替换后会让合法 sketch 生成无返回类型的 `setup();` / `loop();` 原型。
 
-若 Arduino 编译报 `bad CPU type in executable`，检查错误信息指向的 `ctags`。对于常见的 Arduino15 安装，可用原生 `universal-ctags` 替换，并保留旧文件备份：
-
-```bash
-brew install universal-ctags
-ctags_dir="$HOME/Library/Arduino15/packages/builtin/tools/ctags/5.8-arduino11"
-if [ ! -e "$ctags_dir/ctags.x86_64.bak" ]; then
-  mv "$ctags_dir/ctags" "$ctags_dir/ctags.x86_64.bak"
-fi
-ln -sfn "$(brew --prefix universal-ctags)/bin/ctags" "$ctags_dir/ctags"
-```
-
-重启 Arduino IDE 后再验证。Arduino 或 ESP32 board package 更新可能覆盖该链接，因此更新后应重新检查；单次 `arduino-cli` 的 `--build-property runtime.tools.ctags.path=...` 不会影响 IDE。
+若 ctags 报错，优先通过 Arduino/Board Manager 恢复 package 自带的专用工具，并以 `arduino-cli compile --clean` 重新生成构建缓存。2026-07-21 已在 Apple Silicon macOS 上使用 ESP32 core `3.3.10`、`XIAO_ESP32S3`、OPI PSRAM 与 Seeed_GFX `BOARD_SCREEN_COMBO 521` 完成 E1002 初始化、LittleFS 挂载及 Markdown 页面投递验证。
 
 ## 隐私
 
