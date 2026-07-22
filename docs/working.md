@@ -2,6 +2,10 @@
 
 ## Changelog
 
+### 2026-07-22
+
+- 修复 Markdown 首页 renderer 的 CI 测试：测试曾硬编码 macOS Helvetica 路径，Linux runner 无法加载。现在 mock 掉字体加载，仅验证 renderer 的跨平台版面与 RGB 输出。
+
 ### 2026-07-21
 
 - 验证文字文档直显：将 OpenCode E-Ink Reader 的完整中文 PRD 排版为 `1200 x 1600` 页面并推送至 Pi 驱动的 E6 屏，确认 display server 接收、全刷和 `/api/state` 均正常。
