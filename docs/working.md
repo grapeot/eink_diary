@@ -7,7 +7,7 @@
 - 验证文字文档直显：将 OpenCode E-Ink Reader 的完整中文 PRD 排版为 `1200 x 1600` 页面并推送至 Pi 驱动的 E6 屏，确认 display server 接收、全刷和 `/api/state` 均正常。
 - 确立当前文字阅读比例：标题 `40px` / 二级标题 `29px` / 正文与列表 `24px`，对应行距为 `52px` / `38px` / `33px`，左右边距 `72px`、顶部边距 `64px`。
 - 记录文字直显 QA：必须使用 CJK 字体，按英文标识符而非单字符换行，避免中文标点孤立到行首；推送前人工查看最终 PNG。
-- 记录 Apple Silicon Arduino 兼容性：macOS 27 仍支持 Rosetta，macOS 28 将不再支持普通 Intel app；即使 IDE 是原生应用，Board Manager 内嵌的 Intel-only `ctags` 仍会阻断 ESP32 编译，应替换为原生 `universal-ctags` 并在 package 更新后复查。
+- 纠正 Arduino ctags 兼容性结论：Homebrew `universal-ctags` 与 Arduino 的 prototype 生成协议不兼容，会生成无返回类型的函数原型。恢复 Arduino 自带 `ctags 5.8-arduino11` 并使用 `--clean` 后，ESP32 core `3.3.10`、`XIAO_ESP32S3`、OPI PSRAM 与 `BOARD_SCREEN_COMBO 521` 已完成 E1002 初始化、LittleFS 挂载和 Markdown 投递实机验证。
 
 ### 2026-06-30
 
