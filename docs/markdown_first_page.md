@@ -4,6 +4,8 @@
 
 `eink-diary display-markdown` 在渲染后先请求配置 display server 的 `/health`，成功后才将 PNG 上传到 `/api/display`。树莓派负责 Spectra-6 量化与全刷。
 
+将 CJK 字体路径写入本地 `.env` 的 `EINK_MARKDOWN_FONT_PATH`；公开 `.env.example` 只保留占位路径。
+
 这套能力针对树莓派竖屏 display server，不是 E1002 的 `800x480` 多页阅读协议，也不把 server 扩展成 Markdown parser 或翻页器。
 
 ```bash
