@@ -2,6 +2,17 @@
 
 ## Changelog
 
+### 2026-07-21
+
+- 验证文字文档直显：将 OpenCode E-Ink Reader 的完整中文 PRD 排版为 `1200 x 1600` 页面并推送至 Pi 驱动的 E6 屏，确认 display server 接收、全刷和 `/api/state` 均正常。
+- 确立当前文字阅读比例：标题 `40px` / 二级标题 `29px` / 正文与列表 `24px`，对应行距为 `52px` / `38px` / `33px`，左右边距 `72px`、顶部边距 `64px`。
+- 记录文字直显 QA：必须使用 CJK 字体，按英文标识符而非单字符换行，避免中文标点孤立到行首；推送前人工查看最终 PNG。
+
+### 2026-06-30
+
+- 修复 launcher 中 `eink_diary` 定时任务入口：从 workspace 根 `.venv/bin/eink-diary` 改为项目自己的 `.venv/bin/eink-diary`，避免根环境重建后命令消失导致 127。
+- AI sessions export wrapper 现在把 subprocess timeout 单独报为 `AI sessions export timed out...`，和 export 脚本返回非零区分开；e-ink pipeline 调用的是 `scripts/export_sessions.sh` export-only wrapper，不会触发 `sync_sessions.sh --index` 的 semantic cache 刷新。
+
 ### 2026-06-17
 
 - 新增 `eink-diary display IMAGE [--server-url URL]`：把本地图片直接推送到 Pi display server。CLI 只校验图片存在、读取 `EINK_SERVER_URL` 或显式 URL，然后复用 `pipeline.push_to_server()`；设备端继续统一做 1200×1600 / Spectra-6 处理和全刷。
