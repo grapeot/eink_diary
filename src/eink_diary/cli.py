@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import urllib.request
 from datetime import datetime, time, timedelta
 from pathlib import Path
 
@@ -152,6 +153,54 @@ def _add_display_parser(sub: argparse._SubParsersAction) -> None:
     )
 
 
+def _add_markdown_parser(sub: argparse._SubParsersAction) -> None:
+    for name, help_text in (
+        ("render-markdown-first-page", "将 Markdown 首页渲染为 1200x1600 竖版 PNG"),
+        ("display-markdown", "渲染 Markdown 首页并推送到 E-Ink display server"),
+    ):
+        p = sub.add_parser(name, help=help_text)
+        p.add_argument("markdown", type=str)
+        p.add_argument("--title", default=None)
+        p.add_argument("--font-path", default=os.environ.get("EINK_MARKDOWN_FONT_PATH"))
+        p.add_argument("--output", required=True, type=str)
+
+
+def _render_markdown(args: argparse.Namespace) -> Path:
+    from .markdown_page import render_file
+
+    source = Path(args.markdown)
+    if not source.is_file():
+        raise ValueError(f"Markdown 不存在: {source}")
+    if not args.font_path:
+        raise ValueError("请设置 EINK_MARKDOWN_FONT_PATH 或传 --font-path")
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    render_file(source, args.title, args.font_path).save(output, format="PNG")
+    return output
+
+
+def _run_markdown(args: argparse.Namespace, push: bool) -> int:
+    from .pipeline import push_to_server
+
+    try:
+        output = _render_markdown(args)
+        if not push:
+            print(f"已渲染: {output}", file=sys.stderr)
+            return 0
+        server_url = os.environ.get("EINK_SERVER_URL")
+        if not server_url:
+            raise ValueError("未配置 EINK_SERVER_URL")
+        with urllib.request.urlopen(server_url.rstrip("/") + "/health", timeout=10) as response:  # noqa: S310
+            if response.status != 200:
+                raise ValueError(f"display server health 返回 {response.status}")
+        result = push_to_server(str(output), server_url)
+        print(f"已推送 Markdown 首页: {output} | {result}", file=sys.stderr)
+        return 0
+    except Exception as exc:  # noqa: BLE001
+        print(f"Markdown 首页处理失败: {exc}", file=sys.stderr)
+        return 1
+
+
 def _run_run(args: argparse.Namespace) -> int:
     from .pipeline import run_once
 
@@ -219,6 +268,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_synthesize_parser(sub)
     _add_run_parser(sub)
     _add_display_parser(sub)
+    _add_markdown_parser(sub)
     return parser
 
 
@@ -233,6 +283,10 @@ def main(argv: list[str] | None = None) -> int:
         return _run_run(args)
     if args.command == "display":
         return _run_display(args)
+    if args.command == "render-markdown-first-page":
+        return _run_markdown(args, push=False)
+    if args.command == "display-markdown":
+        return _run_markdown(args, push=True)
     parser.error(f"未知命令: {args.command}")
     return 2
 
