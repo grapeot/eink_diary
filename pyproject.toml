@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "墨记 — 彩色电子纸视觉日记：把最近近况采集、理解、生成为一幅画刷到 E-Ink"
 requires-python = ">=3.10"
 dependencies = [
+    "pillow>=10,<12",
     "google-genai>=1.73.1,<2",
     "openai>=1.60,<3",
     "python-dotenv>=1.0,<2",
