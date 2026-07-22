@@ -131,6 +131,23 @@ tmux new-session -d -s eink \
 
 驱动库 `RaspberryPi/` 是 Waveshare 官方的，原样复用（来源见 `adhoc_jobs/archived/pi_eink_control_original`，那是 Pi 上原控制端的完整归档）。
 
+## 附录：macOS 28 前的 Arduino 工具链
+
+E-Ink Diary 的 Pi display server 不依赖 Arduino，但同一工作站上开发 ESP32 E-Ink 设备时可能遇到 Apple Silicon 兼容性问题。Arduino IDE 可能已经是原生 Apple Silicon 应用，而 Board Manager 安装的旧 `ctags` 仍是 Intel-only。macOS 27 还能借 Rosetta 执行它；从 macOS 28 起，Rosetta 不再为普通 Intel app 提供支持。
+
+若 Arduino 编译报 `bad CPU type in executable`，检查错误信息指向的 `ctags`。对于常见的 Arduino15 安装，可用原生 `universal-ctags` 替换，并保留旧文件备份：
+
+```bash
+brew install universal-ctags
+ctags_dir="$HOME/Library/Arduino15/packages/builtin/tools/ctags/5.8-arduino11"
+if [ ! -e "$ctags_dir/ctags.x86_64.bak" ]; then
+  mv "$ctags_dir/ctags" "$ctags_dir/ctags.x86_64.bak"
+fi
+ln -sfn "$(brew --prefix universal-ctags)/bin/ctags" "$ctags_dir/ctags"
+```
+
+重启 Arduino IDE 后再验证。Arduino 或 ESP32 board package 更新可能覆盖该链接，因此更新后应重新检查；单次 `arduino-cli` 的 `--build-property runtime.tools.ctags.path=...` 不会影响 IDE。
+
 ## 隐私
 
 This repository is designed to be publishable with only fake examples. 所有公开文件使用 fake handles / domains / keys。私有联系人、私有路由、真实凭证只存在本地 `.env` 与 workspace 全局 overlay（如 `rules/skills/`），不进本仓库。
