@@ -27,7 +27,7 @@
 - 邮件 / 待办 → `resend_email_skill`（`received list/get`；凭证走 `op run --env-file=.env`）
 - 最近 AI sessions → `contexts/ai_sessions/sync_sessions.sh`（调用 `adhoc_jobs/ai_session_export/`；collector 读取 `opencode/`、`claude_code/`、`antigravity/` 三类导出）
 - 微信"我说了什么"+ 上下文 → `wechat_messages` skill（待接入）
-- 图像生成 → `image_generation_skill` 的 `generate-image`；**中文标注用 `gpt-image-2`，纯意象用 Gemini**；竖版用 `--aspect-ratio 3:4`
+- 图像生成 → `image_generation_skill` 的 `generate-image`；**中文标注用 `gpt-image-2.5-sunburst`，纯意象用 Gemini**；竖版用 `--aspect-ratio 3:4`
 
 边界：
 
@@ -93,10 +93,10 @@ eink-diary run --full-day               # 全天：0-2 点取昨天完整一天�
 eink-diary run --no-push                # 只出图不推送
 ```
 
-它做：采集（collect）→ 挑瞬间写 prompt（synthesize，当前默认 Qwen 3.8 27B）→ 出图（gpt-image-2）
+它做：采集（collect）→ 挑瞬间写 prompt（synthesize，当前默认 Qwen 3.8 27B）→ 出图（gpt-image-2.5-sunburst）
 → 推送到 Pi display server 刷屏。
 
-- **moderation 自动重试**：出图遇 gpt-image-2 的 moderation_blocked，自动重跑 synthesize
+- **moderation 自动重试**：出图遇 gpt-image-2.5-sunburst 的 moderation_blocked，自动重跑 synthesize
   换措辞再试（默认最多 2 次）。不做视觉内容审查（保持简单、cron 友好）。
 - **推送目标**从 `.env` 的 `EINK_SERVER_URL` 读（如 `http://<pi-ip>:8080`），multipart POST
   到 `/api/display`。未配置则跳过推送。
