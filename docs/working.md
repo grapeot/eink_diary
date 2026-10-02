@@ -2,6 +2,14 @@
 
 ## Changelog
 
+### 2026-09-23
+
+- 判断层 LLM 从本地 DS-V4（127.0.0.1:8001, `deepseek-v4-flash`）切换到自托管 Qwen 3.8 27B NVFP4（自托管 SGLang，openai-compatible，走私有网络；model `RadixArk/Qwen3.8-27B-NVFP4`）。只改 `.env` 三个 `DIARY_LLM_*` 变量，代码未动。
+- `synthesize()` 增加 reasoning 模型兼容守卫：OpenAI client 显式 `timeout=1800`；`content` 为空时，仅当 `finish_reason=stop` 才采信 `reasoning_content`（带 stderr warning），否则 raise——防止截断/模板异常时静默产出只有配色后缀的假 prompt。
+- 验证：105 个单元测试全过；真实窗口 `collect` + `synthesize`（~57s，content 直接有值未走守卫）；`run --no-push` 端到端跑通（gpt-image-2 2K，归档 `diary/2026-09-23/1010/`，manifest 正常，moment 模式非 fallback）。
+- 文档同步：`.env.example` 加例 4（自托管 Qwen 27B）；skill / README 的"本地 DS-V4"表述更新；skill 已知陷阱补 reasoning 空 content 一条。
+- 注意：判断层依赖从本机 always-on 服务变为私有网络上的自托管机器，网络断连时 synthesize 会失败（整次 run 失败，不会画错画）。回滚：把 `.env` 里三个 `DIARY_LLM_*` 换回注释掉的 DS-V4 值即可。
+
 ### 2026-07-22
 
 - 修复 Markdown 首页 renderer 的 CI 测试：测试曾硬编码 macOS Helvetica 路径，Linux runner 无法加载。现在 mock 掉字体加载，仅验证 renderer 的跨平台版面与 RGB 输出。
@@ -89,6 +97,7 @@
 
 ## Lessons Learned
 
+- **reasoning 模型的响应要检查 content 是否为空**：SGLang 上的 Qwen 3.8 27B 默认开 thinking，最终答案在 `content`、thinking 在 `reasoning_content`（OpenAI python SDK 把未知字段保留为属性，可直接读）。截断或模板异常时 `content` 可能为空，旧代码 `.content.strip()` 会静默产出假 prompt。守卫策略：仅在 `finish_reason=stop` 时采信 `reasoning_content`（thinking 全文不是画面描述），否则 fail loud。换 LLM 后端时先打一个最小 chat completion 看响应字段结构，别假设和上一个 provider 一样。
 - **Pi 上装依赖用 uv，别用 pip**：pip 在 ARM 上慢且 pillow 可能编译；uv 几秒装完（pillow 有 ARM wheel）。uv 在 `~/.local/bin/uv`，不在默认 PATH。
 - **远程起常驻进程用 tmux，别用 nohup/setsid**：经 SSH 远程 nohup 起的 uvicorn 会被连接关闭带走（表现为"进程没了/log 空/端口不监听"，极易误判为 server 崩溃）。tmux session 才真正存活。诊断时用 `timeout N python -m uvicorn ... > /tmp/x.log 2>&1; cat /tmp/x.log` 能看到真实启动日志。
 - FastAPI 单端点不能同时优雅接 JSON body 和 multipart file：url 也走 form 字段，调用方一律 multipart。

@@ -4,13 +4,14 @@
 - 输入是 collector 产出的素材纯文本（一个时间窗的真实近况）。
 - 任务不是概括，而是**挑一个最有张力的瞬间**，写成有鸭哥、有场景、有情绪的画面描述。
 - 用 OpenAI SDK，base_url / model / api_key 全部从配置读 → provider 无关，
-  同一套代码对接 GPT-5.5 / 远程 DeepSeek / 本地 DS-V4（openai-compatible）。
+  同一套代码对接 GPT-5.5 / 远程 DeepSeek / 本地 DS-V4 / 自托管 Qwen 27B（openai-compatible）。
 - 输出可单独 inspect / 重放（连同图归档）。
 """
 
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
 
 
@@ -114,7 +115,7 @@ class SynthConfig:
 FALLBACK_SIGNAL = "FALLBACK"
 
 # E6 电子纸的配色物理约束，程序化追加到每个 image prompt 末尾（确定性，不靠 LLM 记得）。
-# 只约束颜色/对比，不动画面内容与细节——细节由 DS-V4 负责，颜色适配由代码负责。
+# 只约束颜色/对比，不动画面内容与细节——细节由 LLM 负责，颜色适配由代码负责。
 EINK_COLOR_SUFFIX = (
     " IMPORTANT color constraint for a 6-color e-ink screen: render with VIVID, "
     "SATURATED colors, high contrast, and clean bold areas of solid color. Avoid "
@@ -149,13 +150,33 @@ def synthesize(
     if client is None:
         from openai import OpenAI
 
-        client = OpenAI(base_url=config.base_url, api_key=config.api_key)
+        client = OpenAI(base_url=config.base_url, api_key=config.api_key, timeout=1800)
 
     resp = client.chat.completions.create(
         model=config.model,
         messages=build_messages(context_text, mode=mode),
     )
-    prompt = resp.choices[0].message.content.strip()
+    choice = resp.choices[0]
+    message = choice.message
+    prompt = (message.content or "").strip()
+    if not prompt:
+        # reasoning 模型（如 Qwen3.8 27B thinking 模式）可能把最终答案放进
+        # reasoning_content 而 content 为空。只在完整生成（finish_reason=stop）时
+        # 才采信 reasoning_content；截断（length）时 thinking 文本不是画面描述，
+        # 宁可失败也不产出只有配色后缀的假 prompt。
+        reasoning = (getattr(message, "reasoning_content", None) or "").strip()
+        if reasoning and choice.finish_reason == "stop":
+            print(
+                "synthesize: warning: content empty, using reasoning_content as prompt",
+                file=sys.stderr,
+            )
+            prompt = reasoning
+        else:
+            raise RuntimeError(
+                f"LLM returned empty content (model={config.model}, "
+                f"finish_reason={choice.finish_reason}, reasoning_len={len(reasoning)}); "
+                "refusing to emit a suffix-only prompt"
+            )
     # FALLBACK 信号不是 image prompt，不追加；其余一律程序化追加 E6 配色约束。
     if is_fallback(prompt):
         return prompt

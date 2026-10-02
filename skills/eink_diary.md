@@ -76,11 +76,11 @@ eink-diary-image -p "$(cat prompt.txt)" --aspect-ratio 3:4 --size 2K --quality m
 
 LLM 后端 provider 无关，由 `.env` 三个变量驱动（换 provider 只改这三个）：
 
-- `DIARY_LLM_BASE_URL`（留空=OpenAI 默认；本地 DS-V4 用 `http://localhost:8001/v1`）
-- `DIARY_LLM_MODEL`（如 `gpt-5.5` / `deepseek-v4-flash`）
-- `DIARY_LLM_API_KEY`（本地引擎填 `not-needed`）
+- `DIARY_LLM_BASE_URL`（留空=OpenAI 默认；本地 DS-V4 用 `http://localhost:8001/v1`；自托管 Qwen 27B 用 tailnet 地址）
+- `DIARY_LLM_MODEL`（如 `gpt-5.5` / `deepseek-v4-flash` / `RadixArk/Qwen3.8-27B-NVFP4`）
+- `DIARY_LLM_API_KEY`（本地引擎填 `not-needed` 或 `local`）
 
-三个示例（GPT-5.5 / 远程 DeepSeek / 本地 DS-V4）见 `.env.example`。本地 DS-V4 是 `adhoc_jobs/ds4` 的 always-on 服务（openai-compatible，端口 8001，model `deepseek-v4-flash`）。
+四个示例（GPT-5.5 / 远程 DeepSeek / 本地 DS-V4 / 自托管 Qwen 27B）见 `.env.example`。本地 DS-V4 是 `adhoc_jobs/ds4` 的 always-on 服务（openai-compatible，端口 8001，model `deepseek-v4-flash`）。2026-09 起默认后端为自托管 Qwen 3.8 27B（SGLang，reasoning 模型，thinking 默认开；synthesize 已带空 content 守卫）。
 
 ## eink-diary run（one-shot，供 crontab）
 
@@ -93,7 +93,7 @@ eink-diary run --full-day               # 全天：0-2 点取昨天完整一天�
 eink-diary run --no-push                # 只出图不推送
 ```
 
-它做：采集（collect）→ 挑瞬间写 prompt（synthesize，本地 DS-V4）→ 出图（gpt-image-2）
+它做：采集（collect）→ 挑瞬间写 prompt（synthesize，当前默认 Qwen 3.8 27B）→ 出图（gpt-image-2）
 → 推送到 Pi display server 刷屏。
 
 - **moderation 自动重试**：出图遇 gpt-image-2 的 moderation_blocked，自动重跑 synthesize
@@ -192,4 +192,4 @@ lsof -i :8123
 
 ## 已知陷阱
 
-（暂无。实现并实际踩坑后再补——不预测编造。）
+- **reasoning 模型的空 content**：Qwen 3.8 27B（SGLang）默认开 thinking，响应里最终答案在 `content`、thinking 在 `reasoning_content`。若生成被截断（`finish_reason=length`）或模板异常，`content` 可能为空——旧代码会静默产出只有配色后缀、没有画面的假 prompt。`synthesize()` 现已守卫：`content` 为空且 `finish_reason=stop` 时采信 `reasoning_content`（带 warning）；其余情况 raise，宁可整次 run 失败也不画假画。
