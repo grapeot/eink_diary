@@ -25,7 +25,7 @@
 采集与生成**全部复用 workspace 已有 skill**，本 skill 只负责编排：
 
 - 邮件 / 待办 → `resend_email_skill`（`received list/get`；凭证走 `op run --env-file=.env`）
-- 最近 AI sessions → `contexts/ai_sessions/sync_sessions.sh`（调用 `adhoc_jobs/ai_session_export/`）
+- 最近 AI sessions → `contexts/ai_sessions/sync_sessions.sh`（调用 `adhoc_jobs/ai_session_export/`；collector 读取 `opencode/`、`claude_code/`、`antigravity/` 三类导出）
 - 微信"我说了什么"+ 上下文 → `wechat_messages` skill（待接入）
 - 图像生成 → `image_generation_skill` 的 `generate-image`；**中文标注用 `gpt-image-2`，纯意象用 Gemini**；竖版用 `--aspect-ratio 3:4`
 
@@ -59,7 +59,7 @@ eink-diary collect --output ctx.txt       # 写文件
 
 - **邮件** — 时间窗内收到的邮件（按 `created_at` 过滤；subject + from）。
 - **微信** — 时间窗内**我发出的**文本消息（`IsSender=1 AND Type=1` + CreateTime 窗口，跨所有分片 DB UNION）。
-- **AI sessions** — 我和 AI 的讨论（我的 `## User` turns）。导出 markdown 的 turn 标题已带逐条 `HH:MM` 时间戳（OpenCode export + Claude Code JSONL 均已补），collector 用 frontmatter date + turn HH:MM 组合出精确 datetime 后按窗口过滤。
+- **AI sessions** — 我和 AI 的讨论（我的 `## User` turns）。collector 读取 `opencode/`、`claude_code/`、`antigravity/` 三个导出目录。导出 markdown 的 turn 标题已带逐条 `HH:MM` 时间戳，collector 用 frontmatter date + turn HH:MM 组合出精确 datetime 后按窗口过滤。
 
 输出是分三段的纯文本，缺失/不可用的源给出明确标记，不静默省略。每个源独立降级，单源失败不影响整体。
 

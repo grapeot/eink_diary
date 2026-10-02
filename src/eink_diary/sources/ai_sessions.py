@@ -16,7 +16,6 @@ import glob
 import os
 import re
 import subprocess
-import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -45,29 +44,33 @@ def export_ai_sessions(repo_dir: str | None) -> str | None:
         return None
 
     repo = Path(repo_dir)
-    candidates = [
-        repo / "scripts" / "export_sessions.sh",
-        repo / "export_sessions.sh",
-        repo / "export_sessions.py",
-    ]
-    script = next((p for p in candidates if p.exists()), None)
-    if script is None:
+    script = repo / "sync_sessions.sh"
+    if not script.is_file():
         return None
 
     timeout = int(os.environ.get("DIARY_AI_SESSIONS_EXPORT_TIMEOUT", "300"))
-    if script.suffix == ".py":
-        cmd = [sys.executable, str(script)]
-    else:
-        cmd = ["bash", str(script)]
+    cmd = ["bash", str(script)]
 
-    proc = subprocess.run(
-        cmd,
-        cwd=str(repo),
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            cmd,
+            cwd=str(repo),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        output = ((exc.stderr or exc.stdout or b"") if exc.stderr or exc.stdout else b"")
+        if isinstance(output, bytes):
+            output = output.decode("utf-8", "replace")
+        output = output.strip()
+        if len(output) > 1000:
+            output = output[-1000:]
+        detail = f": {output}" if output else ""
+        raise RuntimeError(
+            f"AI sessions export timed out after {timeout}s via {script.name}{detail}"
+        ) from exc
     if proc.returncode != 0:
         stderr = (proc.stderr or proc.stdout or "").strip()
         if len(stderr) > 1000:
