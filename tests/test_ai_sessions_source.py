@@ -132,22 +132,34 @@ def test_two_windows_get_different_turns(tmp_path):
     assert [s.text for s in w1.snippets] != [s.text for s in w2.snippets]
 
 
-def test_export_ai_sessions_runs_repo_export_script(tmp_path):
-    script_dir = tmp_path / "scripts"
-    script_dir.mkdir()
+def test_export_ai_sessions_runs_repo_sync_script(tmp_path):
     marker = tmp_path / "ran.txt"
-    script = script_dir / "export_sessions.sh"
+    script = tmp_path / "sync_sessions.sh"
     script.write_text(f'#!/bin/bash\nprintf ran > "{marker}"\n', encoding="utf-8")
 
     status = export_ai_sessions(str(tmp_path))
 
     assert marker.read_text(encoding="utf-8") == "ran"
-    assert status == "ai_sessions exported via export_sessions.sh"
+    assert status == "ai_sessions exported via sync_sessions.sh"
 
 
 def test_export_ai_sessions_can_be_disabled(tmp_path, monkeypatch):
-    script = tmp_path / "export_sessions.py"
-    script.write_text("raise SystemExit(7)\n", encoding="utf-8")
+    script = tmp_path / "sync_sessions.sh"
+    script.write_text("#!/bin/bash\nexit 7\n", encoding="utf-8")
     monkeypatch.setenv("DIARY_AI_SESSIONS_AUTO_EXPORT", "false")
 
     assert export_ai_sessions(str(tmp_path)) is None
+
+
+def test_export_ai_sessions_reports_timeout_separately(tmp_path, monkeypatch):
+    script = tmp_path / "sync_sessions.sh"
+    script.write_text("#!/bin/bash\nsleep 2\n", encoding="utf-8")
+    monkeypatch.setenv("DIARY_AI_SESSIONS_EXPORT_TIMEOUT", "1")
+
+    try:
+        export_ai_sessions(str(tmp_path))
+    except RuntimeError as exc:
+        assert "timed out after 1s" in str(exc)
+        assert "sync_sessions.sh" in str(exc)
+    else:
+        raise AssertionError("expected export timeout")

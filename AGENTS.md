@@ -15,7 +15,7 @@
 ## 硬约束
 
 - **不做局部刷新。** E6 介质级不支持，自标定 waveform 有损屏风险，且两小时一画下全刷耗时无关紧要。设备刷屏只用 Waveshare 官方 SDK 全刷接口。任何人不要在驱动层尝试局刷 hack。
-- **编排层定位，不重复造能力。** 采集与生成全部复用 workspace 已有 skill（`resend_email_skill` / `image_generation_skill` / `ai_sessions/export_sessions.py` / `wechat_messages`）。
+- **编排层定位，不重复造能力。** 采集与生成全部复用 workspace 已有 skill（`resend_email_skill` / `image_generation_skill` / `contexts/ai_sessions/sync_sessions.sh` / `wechat_messages`）。
 - **公开仓库。** 私有联系人/路由/凭证/内部路径不进仓库。凭证走 `.env`（gitignored）+ `.env.example`（fake 占位）。发布前跑隐私扫描，零匹配才算过。
 
 ## 工作要求
