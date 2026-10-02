@@ -23,6 +23,8 @@ MODEL_ALIASES = {
     "gemini-pro": "gemini-3-pro-image-preview",
     "gemini-3-pro-image-preview": "gemini-3-pro-image-preview",
     "gpt-image-2": "gpt-image-2",
+    "gpt-image-2.5-flare": "gpt-image-2.5-flare",
+    "gpt-image-2.5-sunburst": "gpt-image-2.5-sunburst",
 }
 
 OPENAI_IMAGE_SIZE_MAP = {
