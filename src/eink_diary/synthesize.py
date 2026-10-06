@@ -10,8 +10,10 @@
 
 from __future__ import annotations
 
+import math
 import os
 import sys
+import time
 from dataclasses import dataclass
 
 
@@ -101,6 +103,14 @@ class SynthConfig:
     base_url: str | None
     api_key: str
     model: str
+    timeout_s: float = 120.0
+    max_retries: int = 1
+
+    def __post_init__(self) -> None:
+        if not math.isfinite(self.timeout_s) or self.timeout_s <= 0:
+            raise ValueError("DIARY_LLM_TIMEOUT_SECONDS must be finite and positive")
+        if type(self.max_retries) is not int or self.max_retries < 0:
+            raise ValueError("DIARY_LLM_MAX_RETRIES must be a nonnegative integer")
 
     @classmethod
     def from_env(cls) -> "SynthConfig":
@@ -108,6 +118,8 @@ class SynthConfig:
             base_url=os.environ.get("DIARY_LLM_BASE_URL") or None,
             api_key=os.environ.get("DIARY_LLM_API_KEY", "") or "not-needed",
             model=os.environ.get("DIARY_LLM_MODEL", "gpt-5.5"),
+            timeout_s=float(os.environ.get("DIARY_LLM_TIMEOUT_SECONDS", "").strip() or "120"),
+            max_retries=int(os.environ.get("DIARY_LLM_MAX_RETRIES", "").strip() or "1"),
         )
 
 
@@ -150,11 +162,38 @@ def synthesize(
     if client is None:
         from openai import OpenAI
 
-        client = OpenAI(base_url=config.base_url, api_key=config.api_key, timeout=1800)
+        client = OpenAI(
+            base_url=config.base_url,
+            api_key=config.api_key,
+            timeout=config.timeout_s,
+            max_retries=config.max_retries,
+        )
 
-    resp = client.chat.completions.create(
-        model=config.model,
-        messages=build_messages(context_text, mode=mode),
+    started = time.monotonic()
+    print(
+        f"synthesize: started mode={mode} timeout_s={config.timeout_s:g} "
+        f"max_retries={config.max_retries}",
+        file=sys.stderr,
+        flush=True,
+    )
+    try:
+        resp = client.chat.completions.create(
+            model=config.model,
+            messages=build_messages(context_text, mode=mode),
+        )
+    except Exception as exc:
+        # Do not log exception text: provider errors may include private request data.
+        print(
+            f"synthesize: request failed error={type(exc).__name__} "
+            f"elapsed_s={time.monotonic() - started:.1f}",
+            file=sys.stderr,
+            flush=True,
+        )
+        raise
+    print(
+        f"synthesize: response received elapsed_s={time.monotonic() - started:.1f}",
+        file=sys.stderr,
+        flush=True,
     )
     choice = resp.choices[0]
     message = choice.message

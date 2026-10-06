@@ -2,6 +2,12 @@
 
 ## Changelog
 
+### 2026-10-06
+
+- 将 synthesize 的 OpenAI SDK 默认超时从 1800 秒改为 120 秒，max_retries 显式设为 1（最多发起 2 次请求），支持通过环境变量 `DIARY_LLM_TIMEOUT_SECONDS` 与 `DIARY_LLM_MAX_RETRIES` 覆盖。
+- 增加即时输出的阶段日志，记录合成开始、响应返回、异常类型与耗时，不记录素材内容与错误正文；外层保护超时保持不变。默认限制针对单次合成调用，fallback 与 moderation 重试可能触发多次合成，不能保证整条流水线在外层预算内完成。
+- 补充离线 MockTransport 测试，覆盖首次超时后恢复、连续超时两次停止、暂时性 HTTP 错误（408/409/429/5xx）重试及永久错误（400/401/403）不重试；空环境变量回落默认值，重试次数拒绝布尔值及非整数。测试使用真实 SDK 重试循环和公开配置属性，不依赖 SDK 私有模块或内部请求头。验证：全套 127 个测试通过。
+
 ### 2026-09-23
 
 - 判断层 LLM 从本地 DS-V4（127.0.0.1:8001, `deepseek-v4-flash`）切换到自托管 Qwen 3.8 27B NVFP4（自托管 SGLang，openai-compatible，走私有网络；model `RadixArk/Qwen3.8-27B-NVFP4`）。只改 `.env` 三个 `DIARY_LLM_*` 变量，代码未动。
@@ -102,6 +108,7 @@
 
 ## Lessons Learned
 
+- HTTP 客户端超时限制连接与读写等阶段的等待，并非整次调用的严格墙钟截止。退避等待与重复合成同样占用时间，仍需保留外层保护。120 秒是参考近期 11 次成功合成（24–59 秒）设定的初始经验阈值，后续配合阶段耗时日志调整；不要让内层单次等待超过外层总预算。
 - **reasoning 模型的响应要检查 content 是否为空**：SGLang 上的 Qwen 3.8 27B 默认开 thinking，最终答案在 `content`、thinking 在 `reasoning_content`（OpenAI python SDK 把未知字段保留为属性，可直接读）。截断或模板异常时 `content` 可能为空，旧代码 `.content.strip()` 会静默产出假 prompt。守卫策略：仅在 `finish_reason=stop` 时采信 `reasoning_content`（thinking 全文不是画面描述），否则 fail loud。换 LLM 后端时先打一个最小 chat completion 看响应字段结构，别假设和上一个 provider 一样。
 - Multiple exporters must not share one incremental state file: an older writer can advance the cursor and permanently prevent the canonical exporter from enriching those sessions.
 - **Pi 上装依赖用 uv，别用 pip**：pip 在 ARM 上慢且 pillow 可能编译；uv 几秒装完（pillow 有 ARM wheel）。uv 在 `~/.local/bin/uv`，不在默认 PATH。
