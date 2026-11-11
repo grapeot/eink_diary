@@ -228,3 +228,11 @@ def test_cli_returns_nonzero_for_library_error(monkeypatch: pytest.MonkeyPatch, 
 
     assert exit_code == 1
     assert "missing fake key" in capsys.readouterr().err
+
+
+def test_resolve_generate_model_supports_gpt_image_2_6(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("OPENAI_IMAGE_MODEL", raising=False)
+    for alias in ("gpt-image-2.6-sunburst", "gpt-image-2.6-flare"):
+        provider, model_id = core.resolve_generate_model(alias)
+        assert provider == "openai"
+        assert model_id == alias

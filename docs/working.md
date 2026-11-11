@@ -2,6 +2,10 @@
 
 ## Changelog
 
+### 2026-11-10
+
+- 默认出图模型从 `gpt-image-2.5-sunburst` 升到 `gpt-image-2.6-sunburst`（2026-11-04 发布，同 token 单价、更快）：内嵌 imagegen core 加 2.6 两个别名，`.env.example`、rfc、skill 文档同步。quality 默认 medium 不变（2.6 不支持 xhigh/max，本项目不用）。
+
 ### 2026-10-06
 
 - 将 synthesize 的 OpenAI SDK 默认超时从 1800 秒改为 120 秒，max_retries 显式设为 1（最多发起 2 次请求），支持通过环境变量 `DIARY_LLM_TIMEOUT_SECONDS` 与 `DIARY_LLM_MAX_RETRIES` 覆盖。
